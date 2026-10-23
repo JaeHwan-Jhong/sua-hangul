@@ -212,6 +212,13 @@
     </div>
   </div>
 
+  <div id="voices" class="panel ff hidden">
+    <header><h2>🎙️ 목소리 고르기</h2><button class="btn small" id="voices-close">✖ 닫기</button></header>
+    <div id="voices-rate" style="display:flex;gap:6px;align-items:center;font-size:12px;margin-bottom:6px;flex-wrap:wrap"></div>
+    <div id="voices-list" class="grid" style="grid-template-columns:1fr 1fr;flex:1"></div>
+    <div id="voices-hint" style="font-size:10px;opacity:.85;margin-top:5px;line-height:1.4"></div>
+  </div>
+
   <div id="report" class="panel ff hidden">
     <header><h2>📊 학습 기록</h2><span id="report-sum" style="font-size:12px"></span><button class="btn small" id="report-close">✖ 닫기</button></header>
     <div id="report-body"></div>
@@ -223,6 +230,7 @@
       <button class="btn" id="menu-bgm">🎵 배경음: 켬</button>
       <button class="btn" id="menu-sound">🔔 효과음: 켬</button>
       <button class="btn" id="menu-tts">🗣️ 음성 안내: 켬</button>
+      <button class="btn" id="menu-voice">🎙️ 목소리 고르기</button>
       <button class="btn" id="menu-report">📊 학습 기록</button>
       <button class="btn" id="menu-title">💾 저장하고 처음 화면</button>
     </div>
@@ -233,7 +241,7 @@
   <div id="title" class="screen">
     <div class="crystal-row"><span style="color:#4ade80;background:#4ade80"></span><span style="color:#60a5fa;background:#60a5fa"></span><span style="color:#f87171;background:#f87171"></span><span style="color:#fde047;background:#fde047"></span></div>
     <h1>수아와 한글 크리스탈</h1>
-    <div class="sub">빛을 잃은 크리스탈을 되찾는 한글 모험 · 테스트 v0.2</div>
+    <div class="sub">빛을 잃은 크리스탈을 되찾는 한글 모험 · 테스트 v0.2.1</div>
     <div class="btns">
       <button class="btn hidden" id="t-continue">▶ 이어하기</button>
       <button class="btn" id="t-new">✨ 새로 시작</button>
@@ -249,7 +257,7 @@
 /* =====================================================================
    ① 내용 데이터 — 여기만 고치면 문제/캐릭터/아이템이 바뀝니다
    ===================================================================== */
-const VERSION = 'v0.2';
+const VERSION = 'v0.2.1';
 const HERO_NAME = '수아';
 const RESPAWN_STEPS = 60;      // 몬스터가 다시 나타나기까지 걸음 수
 const MOVE_MS = 150;           // 한 칸 이동 시간(ms)
@@ -613,18 +621,25 @@ const BGM = {
   resume(){ if (state.bgm && actx && this.want && this.cur !== this.want) this.start(this.want); },
 };
 const TTS = {
-  voice: null, ok: null, tries: 0,   // ok: 실제로 소리가 난 적이 있는지 (못 내는 환경이면 '듣기' 문제를 내지 않음)
+  voice: null, ok: null, tries: 0, list: [],   // ok: 실제로 소리가 난 적이 있는지 (못 내는 환경이면 '듣기' 문제를 내지 않음)
   init(){
     if (!('speechSynthesis' in window)) return;
-    const pickVoice = () => { const vs = speechSynthesis.getVoices();
-      this.voice = vs.find(v => /ko/i.test(v.lang) && /yuna|유나/i.test(v.name)) || vs.find(v => /ko/i.test(v.lang)) || null; };
-    pickVoice(); speechSynthesis.onvoiceschanged = pickVoice;
+    this.refresh(); speechSynthesis.onvoiceschanged = () => this.refresh();
   },
-  say(text, rate=0.92){
+  refresh(){ try { const vs = speechSynthesis.getVoices(); this.list = vs.filter(v => /^ko/i.test(v.lang) || /ko[-_]kr/i.test(v.lang)); this.voice = this.choose(); } catch(e){} },
+  // 애플 음성 품질: 프리미엄(3) > 향상됨(2) > 기본(1). voiceURI 예: com.apple.voice.premium.ko-KR.Yuna
+  quality(v){ const s = (v.name + ' ' + v.voiceURI).toLowerCase(); return /premium|프리미엄/.test(s) ? 3 : /enhanced|향상/.test(s) ? 2 : 1; },
+  qualityName(v){ return ['', '기본', '향상됨', '프리미엄'][this.quality(v)]; },
+  choose(){
+    const saved = state.voiceURI && this.list.find(v => v.voiceURI === state.voiceURI); if (saved) return saved;
+    const isYuna = v => /yuna|유나/i.test(v.name) ? 1 : 0;
+    return this.list.slice().sort((a,b) => (this.quality(b) - this.quality(a)) || (isYuna(b) - isYuna(a)))[0] || null;
+  },
+  say(text, rate){
     if (!state.tts || !('speechSynthesis' in window) || !text) return;
     try {
       const speak = () => { const u = new SpeechSynthesisUtterance(text.replace(/[^\p{L}\p{N}\s.,!?~+=]/gu, ' '));
-        u.lang = 'ko-KR'; if (this.voice) u.voice = this.voice; u.rate = rate; u.pitch = 1.1;
+        u.lang = 'ko-KR'; if (this.voice) u.voice = this.voice; u.rate = rate || state.ttsRate || 0.95; u.pitch = 1.0;
         u.onstart = () => { this.ok = true; }; u.onerror = ev => { const er = ev && ev.error; if (this.ok !== true && er && er !== 'canceled' && er !== 'interrupted') this.ok = false; };
         speechSynthesis.speak(u); this.tries++;
         if (this.ok === null) setTimeout(() => { if (this.ok === null && this.tries >= 3) this.ok = false; }, 4000); };
@@ -645,9 +660,9 @@ function freshState(){
     crystals:[false,false,false,false], stars:[false,false,false,false], finalDone:false, ending1Shown:false, starsShown:false, w2Intro:false,
     defeated:{}, chests:{}, steps:0, stats:{}, airship:false, flying:false,
     items:['outfit_track','shoes_sneaker','hair_twin','hc_brown'],   // 처음엔 기본 치장만 (하얀 츄리닝)
-    outfit:{...DEFAULT_OUTFIT}, sound:true, tts:true, bgm:true, started:false};
+    outfit:{...DEFAULT_OUTFIT}, sound:true, tts:true, bgm:true, ttsRate:0.95, voiceURI:null, started:false};
 }
-function resetState(){ const keep = {sound:state.sound, tts:state.tts, bgm:state.bgm}; for (const k in state) delete state[k]; Object.assign(state, freshState(), keep); }
+function resetState(){ const keep = {sound:state.sound, tts:state.tts, bgm:state.bgm, ttsRate:state.ttsRate, voiceURI:state.voiceURI}; for (const k in state) delete state[k]; Object.assign(state, freshState(), keep); }
 function save(){ try { state.hero.x = hero.x; state.hero.y = hero.y; state.hero.dir = hero.dir; localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch(e){} }
 function load(){
   try { const s = localStorage.getItem(SAVE_KEY); if (!s) return false; const d = JSON.parse(s);
@@ -655,7 +670,7 @@ function load(){
     // v0.1 저장 호환
     if (!d.items) state.items = f.items; if (!d.outfit) state.outfit = {...DEFAULT_OUTFIT}; if (!d.stars) state.stars = [false,false,false,false];
     if (!d.map || !MAPS[d.map]) state.map = 'w1'; if (d.airship && d.ending1Shown === undefined) state.ending1Shown = true;
-    if (d.sound === undefined) state.sound = true; if (d.tts === undefined) state.tts = true; if (d.bgm === undefined) state.bgm = true;
+    if (d.sound === undefined) state.sound = true; if (d.tts === undefined) state.tts = true; if (d.bgm === undefined) state.bgm = true; if (!d.ttsRate) state.ttsRate = 0.95; if (d.voiceURI === undefined) state.voiceURI = null;
     for (const k in DEFAULT_OUTFIT) if (!(k in state.outfit)) state.outfit[k] = DEFAULT_OUTFIT[k];
     return true; } catch(e){ return false; }
 }
@@ -1355,6 +1370,26 @@ $('#menu-bgm').addEventListener('click', () => { state.bgm = !state.bgm; refresh
 $('#menu-sound').addEventListener('click', () => { state.sound = !state.sound; refreshMenu(); save(); SFX.select(); });
 $('#menu-tts').addEventListener('click', () => { state.tts = !state.tts; refreshMenu(); save(); if (!state.tts) TTS.stop(); else TTS.say('음성 안내를 켰어요'); });
 $('#menu-report').addEventListener('click', () => { toggleMenu(); openReport(); });
+$('#menu-voice').addEventListener('click', () => { toggleMenu(); openVoices(); });
+const SAMPLE_LINE = `안녕! 나는 ${HERO_NAME}야. 같이 한글 모험을 떠나자!`;
+function openVoices(){ TTS.refresh(); $('#voices').classList.remove('hidden'); ui.open++; renderVoices(); }
+function renderVoices(){
+  const rateBox = $('#voices-rate'); rateBox.innerHTML = '<span>말 빠르기:</span>';
+  [['느리게', 0.8], ['보통', 0.95], ['빠르게', 1.1]].forEach(([label, r]) => { const b = document.createElement('button'); b.className = 'btn small' + (Math.abs((state.ttsRate||0.95) - r) < 0.01 ? ' right' : ''); b.textContent = label; b.onclick = () => { state.ttsRate = r; save(); SFX.select(); TTS.say(SAMPLE_LINE); renderVoices(); }; rateBox.appendChild(b); });
+  const tb = document.createElement('button'); tb.className = 'btn small'; tb.textContent = '🔊 들어보기'; tb.onclick = () => TTS.say(SAMPLE_LINE); rateBox.appendChild(tb);
+  const list = $('#voices-list'); list.innerHTML = '';
+  if (!('speechSynthesis' in window)) list.innerHTML = '<p style="font-size:12px">이 브라우저는 음성 안내를 지원하지 않아요.</p>';
+  else if (!TTS.list.length) list.innerHTML = '<p style="font-size:12px">한국어 목소리를 아직 못 찾았어요. 잠시 뒤 다시 열어 보거나, 아래 안내대로 목소리를 받아 주세요.</p>';
+  TTS.list.slice().sort((a,b) => TTS.quality(b) - TTS.quality(a)).forEach(v => {
+    const b = document.createElement('button'); const on = TTS.voice && TTS.voice.voiceURI === v.voiceURI;
+    b.className = 'btn' + (on ? ' right' : ''); b.style.fontSize = '13px'; b.style.padding = '6px 4px';
+    b.innerHTML = `${on ? '✅ ' : ''}${v.name} <span style="font-size:10px;opacity:.75">· ${TTS.qualityName(v)}${v.localService === false ? ' · 온라인' : ''}</span>`;
+    b.onclick = () => { state.voiceURI = v.voiceURI; TTS.voice = v; save(); SFX.select(); TTS.say(SAMPLE_LINE); renderVoices(); };
+    list.appendChild(b);
+  });
+  $('#voices-hint').innerHTML = '목록에 <b>프리미엄</b>이 없으면 기기에서 받아 주세요 → 아이패드/아이폰: 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성 → 한국어 → 유나 → <b>유나(프리미엄)</b> 다운로드 → 앱을 완전히 닫았다가 다시 열기. 맥: 시스템 설정 → 손쉬운 사용 → 콘텐츠 말하기 → 시스템 음성 → 음성 관리.';
+}
+$('#voices-close').addEventListener('click', () => { $('#voices').classList.add('hidden'); ui.open--; });
 $('#menu-title').addEventListener('click', () => { save(); toggleMenu(); showTitle(); });
 
 function showTitle(){ state.started = false; $('#title').classList.remove('hidden'); ui.open++; $('#t-continue').classList.toggle('hidden', !hasSave()); BGM.play('house'); }
