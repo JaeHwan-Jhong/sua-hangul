@@ -85,8 +85,8 @@
   .bt-name { font-size:12px; font-weight:800; color:#fff; text-shadow:0 1px 0 #000, 0 0 4px #000; margin-top:2px; }
   .bt-hp { width:90px; height:8px; margin:3px auto 0; background:#333; border:1px solid #fff; border-radius:4px; overflow:hidden; }
   .bt-hp i { display:block; height:100%; background:linear-gradient(90deg,#ff5d5d,#ffb347); width:100%; transition:width .4s; }
-  #bt-hero { position:absolute; right:70px; top:-4px; width:110px; text-align:center; }
-  #bt-hero-canvas { width:96px; height:96px; }
+  #bt-hero { position:absolute; right:70px; top:-6px; width:110px; text-align:center; }
+  #bt-hero-canvas { width:86px; height:122px; }
   #bt-hero.attack { animation:attack .5s; }
   #bt-hero.shake { animation:shake .5s; }
   @keyframes attack { 0% { transform:translateX(0);} 40% { transform:translateX(-150px) scale(1.1);} 60% { transform:translateX(-150px);} 100% { transform:translateX(0);} }
@@ -186,7 +186,7 @@
   <div id="battle" class="screen hidden">
     <div id="bt-arena">
       <div id="bt-monster"><div id="bt-mon-emoji">🦊</div><div class="bt-name" id="bt-mon-name">여우</div><div class="bt-hp"><i id="bt-mon-hp"></i></div></div>
-      <div id="bt-hero"><canvas id="bt-hero-canvas" width="96" height="96"></canvas><div class="bt-name" id="bt-hero-name">수아</div></div>
+      <div id="bt-hero"><canvas id="bt-hero-canvas" width="86" height="122"></canvas><div class="bt-name hidden" id="bt-hero-name">수아</div></div>
     </div>
     <div id="bt-panel" class="ff">
       <div id="bt-q"><div id="bt-big"></div><div id="bt-prompt"></div><button class="btn" id="bt-replay">🔊</button></div>
@@ -241,7 +241,7 @@
   <div id="title" class="screen">
     <div class="crystal-row"><span style="color:#4ade80;background:#4ade80"></span><span style="color:#60a5fa;background:#60a5fa"></span><span style="color:#f87171;background:#f87171"></span><span style="color:#fde047;background:#fde047"></span></div>
     <h1>수아와 한글 크리스탈</h1>
-    <div class="sub">빛을 잃은 크리스탈을 되찾는 한글 모험 · 테스트 v0.2.1</div>
+    <div class="sub">빛을 잃은 크리스탈을 되찾는 한글 모험 · 테스트 v0.2.2</div>
     <div class="btns">
       <button class="btn hidden" id="t-continue">▶ 이어하기</button>
       <button class="btn" id="t-new">✨ 새로 시작</button>
@@ -257,7 +257,7 @@
 /* =====================================================================
    ① 내용 데이터 — 여기만 고치면 문제/캐릭터/아이템이 바뀝니다
    ===================================================================== */
-const VERSION = 'v0.2.1';
+const VERSION = 'v0.2.2';
 const HERO_NAME = '수아';
 const RESPAWN_STEPS = 60;      // 몬스터가 다시 나타나기까지 걸음 수
 const MOVE_MS = 150;           // 한 칸 이동 시간(ms)
@@ -716,43 +716,89 @@ let toastTimer = null;
 function toast(text){ const t = $('#toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2000); }
 
 /* =====================================================================
-   ⑦ 그리기: 지도 배경(맵별로 한 번 그려 캐시), 집 안, 캐릭터 + 꾸미기 아이템
+   ⑦ 그리기: 지도 배경(맵별로 한 번 그려 캐시), 집 안, 캐릭터(치비) + 꾸미기 아이템
    ===================================================================== */
+const OUT = '#3a2333', LW = 0.8;                       // 외곽선 색/굵기 (치비 스티커 느낌)
+const o_ = c => { c.strokeStyle = OUT; c.lineWidth = LW; c.stroke(); };
+function roundRectPath(c,x,y,w,h,r){ r = Math.min(r, w/2, h/2); c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
 const rr = (c,x,y,w,h,col) => { c.fillStyle = col; c.fillRect(x,y,w,h); };
+const rrN = (c,x,y,w,h,r,col) => { roundRectPath(c,x,y,w,h,r); c.fillStyle = col; c.fill(); };
+const rrO = (c,x,y,w,h,r,col) => { roundRectPath(c,x,y,w,h,r); c.fillStyle = col; c.fill(); o_(c); };
 const ci = (c,x,y,r,col) => { c.fillStyle = col; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); };
-const el = (c,x,y,rx,ry,col) => { c.fillStyle = col; c.beginPath(); c.ellipse(x,y,rx,ry,0,0,7); c.fill(); };
+const ciO = (c,x,y,r,col) => { c.fillStyle = col; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); o_(c); };
+const el = (c,x,y,rx,ry,col,rot=0) => { c.fillStyle = col; c.beginPath(); c.ellipse(x,y,rx,ry,rot,0,7); c.fill(); };
+const elO = (c,x,y,rx,ry,col,rot=0) => { c.fillStyle = col; c.beginPath(); c.ellipse(x,y,rx,ry,rot,0,7); c.fill(); o_(c); };
 const tri = (c,x1,y1,x2,y2,x3,y3,col) => { c.fillStyle = col; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.lineTo(x3,y3); c.closePath(); c.fill(); };
+const triO = (c,x1,y1,x2,y2,x3,y3,col) => { tri(c,x1,y1,x2,y2,x3,y3,col); o_(c); };
 const poly = (c,pts,col) => { c.fillStyle = col; c.beginPath(); pts.forEach((p,i) => i ? c.lineTo(p[0],p[1]) : c.moveTo(p[0],p[1])); c.closePath(); c.fill(); };
-const star = (c,x,y,r,col) => { c.fillStyle = col; c.beginPath(); for (let i=0;i<10;i++){ const a = -Math.PI/2 + i*Math.PI/5, rad = i%2 ? r*0.45 : r; c.lineTo(x+Math.cos(a)*rad, y+Math.sin(a)*rad); } c.closePath(); c.fill(); };
+const polyO = (c,pts,col) => { poly(c,pts,col); o_(c); };
+const starPath = (c,x,y,r) => { c.beginPath(); for (let i=0;i<10;i++){ const a = -Math.PI/2 + i*Math.PI/5, rad = i%2 ? r*0.45 : r; c.lineTo(x+Math.cos(a)*rad, y+Math.sin(a)*rad); } c.closePath(); };
+const star = (c,x,y,r,col) => { starPath(c,x,y,r); c.fillStyle = col; c.fill(); };
+const starO = (c,x,y,r,col) => { starPath(c,x,y,r); c.fillStyle = col; c.fill(); o_(c); };
 const heart = (c,x,y,r,col) => { ci(c,x-r*0.5,y-r*0.3,r*0.55,col); ci(c,x+r*0.5,y-r*0.3,r*0.55,col); tri(c,x-r*1.02,y-r*0.1,x+r*1.02,y-r*0.1,x,y+r,col); };
-const line = (c,x1,y1,x2,y2,col,w=1) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); };
+const line = (c,x1,y1,x2,y2,col,w=1) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); };
 const ring = (c,x,y,r,col,w=1) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.arc(x,y,r,0,7); c.stroke(); };
+const arc = (c,x,y,r,a0,a1,col,w=1) => { c.strokeStyle = col; c.lineWidth = w; c.lineCap = 'round'; c.beginPath(); c.arc(x,y,r,a0,a1); c.stroke(); };
 const emojiAt = (c, e, x, y, size) => { c.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#000'; c.fillText(e, x, y); };
+function shade(hex, p){ // 색 밝기 조절: p<0 어둡게, p>0 밝게
+  if (!/^#[0-9a-f]{6}$/i.test(hex)) return hex;
+  const n = parseInt(hex.slice(1),16); let r = (n>>16)&255, g = (n>>8)&255, b = n&255;
+  if (p < 0){ r *= 1+p; g *= 1+p; b *= 1+p; } else { r += (255-r)*p; g += (255-g)*p; b += (255-b)*p; }
+  return `rgb(${r|0},${g|0},${b|0})`;
+}
 
-function drawTree(c, x, y, s=1){ rr(c, x-2*s, y+2*s, 4*s, 7*s, '#7a4a1e'); ci(c, x, y, 8*s, '#2f8f3c'); ci(c, x-3*s, y-3*s, 5*s, '#45b24f'); }
-function drawHouseTile(c, x, y, w, h, roof){ rr(c, x, y, w, h, '#fff3d6'); tri(c, x-2, y, x+w/2, y-8, x+w+2, y, roof); rr(c, x+w/2-2, y+h-5, 4, 5, '#8b5a2b'); rr(c, x+2, y+2, 3, 3, '#9ad7ff'); }
+/* ---------- 지도 타일 ---------- */
+function drawTree(c, x, y, s=1){
+  el(c, x, y+10*s, 7*s, 2.2*s, 'rgba(0,0,0,.18)');
+  rrO(c, x-2*s, y+2*s, 4*s, 8*s, 1.2*s, '#8a5a2b');
+  c.beginPath(); c.arc(x, y, 8*s, 0, 7); c.fillStyle = '#2a7f36'; c.fill(); o_(c);
+  ci(c, x-1*s, y-1*s, 6.2*s, '#3aa047'); ci(c, x-3*s, y-3.2*s, 3.2*s, '#6fcf6f');
+}
+function drawMountain(c, px, py){
+  polyO(c, [[px+2,py+30],[px+16,py+3],[px+30,py+30]], '#9a8f80');
+  poly(c, [[px+16,py+3],[px+30,py+30],[px+16,py+30]], '#75695c');
+  poly(c, [[px+16,py+3],[px+11,py+12],[px+13,py+11],[px+15,py+13],[px+17,py+11],[px+19,py+13],[px+21,py+12]], '#ffffff');
+}
+function drawHouseTile(c, x, y, w, h, roof){
+  rrO(c, x, y, w, h, 1, '#fff6e0'); rr(c, x+1, y+h-3, w-2, 2, '#e8d7b8');
+  polyO(c, [[x-2.5,y],[x+w/2,y-9],[x+w+2.5,y]], roof); line(c, x-1, y-1.5, x+w+1, y-1.5, shade(roof,-.25), 1.2);
+  rrO(c, x+w/2-2.2, y+h-6, 4.4, 6, 1, '#9a6a3c'); ci(c, x+w/2+1, y+h-3, 0.5, '#ffd84d');
+  rrO(c, x+2, y+2.5, 3.4, 3.4, 0.6, '#9fdcff'); line(c, x+3.7, y+2.5, x+3.7, y+5.9, '#fff', 0.5);
+}
 function drawCrystal(c, x, y, color, lit, starShape){
-  if (starShape){ star(c, x, y, 7, lit ? color : '#777'); if (lit){ c.globalAlpha = .35; ci(c, x, y, 11, color); c.globalAlpha = 1; } return; }
-  c.save(); c.translate(x, y); c.rotate(Math.PI/4); rr(c,-5,-5,10,10, lit ? color : '#777'); rr(c,-5,-5,4,4, lit ? '#fff' : '#999'); c.restore();
+  if (starShape){ starO(c, x, y, 7, lit ? color : '#8a8a8a'); if (lit){ c.globalAlpha = .35; ci(c, x, y, 11, color); c.globalAlpha = 1; } return; }
+  c.save(); c.translate(x, y); c.rotate(Math.PI/4); rrO(c,-5,-5,10,10,1.5, lit ? color : '#8a8a8a'); rr(c,-4,-4,3.5,3.5, lit ? 'rgba(255,255,255,.85)' : '#aaa'); c.restore();
   if (lit){ c.globalAlpha = .35; ci(c, x, y, 11, color); c.globalAlpha = 1; }
 }
 function renderOutdoor(map){
   const base = document.createElement('canvas'); base.width = map.w*TILE; base.height = map.h*TILE; const c = base.getContext('2d');
+  const land = (x,y) => x>=0 && y>=0 && x<map.w && y<map.h && !'~P'.includes(map.rows[y][x]);
+  const grassCol = map.id==='w2' ? '#74c653' : '#7fd05a', grassD = map.id==='w2' ? '#63b344' : '#6cbd49', grassL = map.id==='w2' ? '#8ad66a' : '#95dd73';
   for (let y=0;y<map.h;y++) for (let x=0;x<map.w;x++){
-    const t = map.rows[y][x], px = x*TILE, py = y*TILE, h = hash(x,y);
-    if (t==='~' || t==='P'){ rr(c, px, py, TILE, TILE, '#2f74d0'); continue; }
-    if (t==='s'){ rr(c, px, py, TILE, TILE, '#f0dc9c'); for (let i=0;i<4;i++) rr(c, px+((h*97+i*31)%28|0)+2, py+((h*53+i*17)%28|0)+2, 2, 2, '#e2c87b'); if (t==='s') continue; }
-    rr(c, px, py, TILE, TILE, map.id==='w2' ? '#6fc24a' : '#79c850');
-    for (let i=0;i<3;i++) rr(c, px+((h*89+i*37)%28|0)+2, py+((h*41+i*23)%28|0)+2, 3, 2, '#69b744');
-    if (t==='f'){ drawTree(c, px+10, py+13); drawTree(c, px+23, py+22, 0.9); if (h>0.5) drawTree(c, px+24, py+8, 0.7); }
-    if (t==='m'){ tri(c, px+3,py+30, px+16,py+4, px+29,py+30, '#8f8577'); tri(c, px+16,py+4, px+29,py+30, px+16,py+30, '#6f655a'); tri(c, px+16,py+4, px+12,py+12, px+20,py+12, '#fff'); }
-    if (t==='V'){ drawHouseTile(c, px+3, py+13, 11, 10, '#d94b3b'); drawHouseTile(c, px+18, py+16, 10, 9, '#c9533f'); drawTree(c, px+26, py+7, 0.6); }
-    if (t==='T'){ drawTree(c, px+5, py+8, 0.7); drawTree(c, px+27, py+8, 0.7); rr(c, px+7, py+22, 18, 6, '#c9c9c9'); rr(c, px+8, py+9, 4, 13, '#e6e6e6'); rr(c, px+20, py+9, 4, 13, '#e6e6e6'); rr(c, px+6, py+7, 20, 3, '#e6e6e6'); }
-    if (t==='C'){ el(c, px+16, py+21, 13, 11, '#8a8a8a'); el(c, px+16, py+24, 6, 8, '#222'); }
-    if (t==='W'){ rr(c, px+11, py+6, 10, 24, '#b9bec7'); rr(c, px+9, py+4, 14, 4, '#9aa0aa'); for (let i=0;i<3;i++) rr(c, px+9+i*5, py+1, 3, 3, '#9aa0aa'); rr(c, px+14, py+11, 4, 5, '#223'); rr(c, px+14, py+23, 4, 7, '#223'); }
-    if (t==='K'){ rr(c, px+3, py+14, 26, 16, '#d6dae0'); rr(c, px+3, py+6, 7, 24, '#c3c8d0'); rr(c, px+22, py+6, 7, 24, '#c3c8d0'); for (let i=0;i<2;i++){ rr(c, px+3+i*19, py+3, 3, 3, '#c3c8d0'); rr(c, px+7+i*19, py+3, 3, 3, '#c3c8d0'); } c.fillStyle='#4a3b2a'; c.beginPath(); c.ellipse(px+16, py+30, 5, 8, 0, Math.PI, 0); c.fill(); rr(c, px+6, py-2, 6, 4, '#e03131'); rr(c, px+5, py-3, 1, 9, '#333'); }
-    if (t==='I'){ tri(c, px+3, py+18, px+16, py+3, px+29, py+18, '#ff8fb1'); rr(c, px+7, py+18, 18, 11, '#fff3d6'); rr(c, px+14, py+21, 4, 8, '#8b5a2b'); rr(c, px+9, py+20, 3, 3, '#9ad7ff'); star(c, px+16, py+6, 3, '#ffd84d'); }
-    if (t==='Z'){ rr(c, px+9, py+2, 14, 28, '#3b3b55'); rr(c, px+7, py+0, 18, 4, '#2a2a40'); for (let i=0;i<4;i++) rr(c, px+7+i*5, py-3, 3, 3, '#2a2a40'); rr(c, px+13, py+8, 6, 7, '#c084fc'); rr(c, px+13, py+22, 6, 8, '#1a1a2a'); }
+    const t = map.rows[y][x], px = x*TILE, py = y*TILE, h = hash(x,y), h2 = hash(x+101,y+37);
+    if (t==='~' || t==='P'){
+      rr(c, px, py, TILE, TILE, '#2f74d0');
+      // 물가: 땅과 닿은 쪽에 밝은 띠
+      if (land(x,y-1)) rr(c, px, py, TILE, 5, '#5b9fe8'); if (land(x,y+1)) rr(c, px, py+TILE-5, TILE, 5, '#5b9fe8');
+      if (land(x-1,y)) rr(c, px, py, 5, TILE, '#5b9fe8'); if (land(x+1,y)) rr(c, px+TILE-5, py, 5, TILE, '#5b9fe8');
+      if (h < 0.25) rr(c, px+((h*300)%22|0)+4, py+((h2*300)%26|0)+3, 5, 1.5, 'rgba(255,255,255,.25)');
+      continue;
+    }
+    if (t==='s'){ rr(c, px, py, TILE, TILE, '#f2e0a4'); for (let i=0;i<5;i++) ci(c, px+((h*97+i*31)%28|0)+2, py+((h2*53+i*17)%28|0)+2, 0.9, '#e0c67e'); if (h2 > 0.9){ arc(c, px+((h*300)%24|0)+4, py+((h2*300)%24|0)+4, 2, Math.PI, 2*Math.PI, '#fff', 1.2); } continue; }
+    // 풀 (바탕)
+    rr(c, px, py, TILE, TILE, grassCol);
+    el(c, px+((h*300)%24|0)+4, py+((h2*300)%24|0)+4, 6, 4, grassL);
+    for (let i=0;i<3;i++){ const gx = px+((h*89+i*37)%27|0)+2, gy = py+((h2*41+i*23)%26|0)+4; line(c, gx, gy+2.5, gx, gy, grassD, 0.9); line(c, gx+1.6, gy+2.5, gx+2.2, gy+0.4, grassD, 0.9); }
+    if (t==='.' && h2 > 0.86){ const fx = px+((h*300)%26|0)+3, fy = py+((h2*300)%26|0)+3, col = ['#ff8fb1','#fff','#ffd84d','#c9a0ff'][(h*4)|0]; for (let k=0;k<5;k++) ci(c, fx+Math.cos(k*1.257)*1.4, fy+Math.sin(k*1.257)*1.4, 0.9, col); ci(c, fx, fy, 0.7, '#fff3a0'); }
+    if (t==='f'){ drawTree(c, px+10, py+13); drawTree(c, px+23, py+21, 0.9); if (h>0.5) drawTree(c, px+24, py+7, 0.65); }
+    if (t==='m'){ drawMountain(c, px, py); }
+    if (t==='V'){ drawHouseTile(c, px+3, py+13, 11, 10, '#e05252'); drawHouseTile(c, px+18, py+16, 10, 9, '#d9633f'); drawTree(c, px+26, py+6, 0.55); for (let i=0;i<4;i++) rr(c, px+3+i*3.2, py+27, 1.2, 4, '#f3e2b8'); }
+    if (t==='T'){ drawTree(c, px+5, py+7, 0.65); drawTree(c, px+27, py+7, 0.65); rrO(c, px+6, py+22, 20, 6, 1, '#d2d2d2'); rrO(c, px+8, py+9, 4, 13, 1, '#ececec'); rrO(c, px+20, py+9, 4, 13, 1, '#ececec'); rrO(c, px+5, py+6, 22, 3.5, 1, '#ececec'); rr(c, px+9, py+10, 1, 11, '#c8c8c8'); rr(c, px+21, py+10, 1, 11, '#c8c8c8'); }
+    if (t==='C'){ elO(c, px+16, py+21, 13, 11, '#8d8d8d'); el(c, px+13, py+17, 6, 4, '#a3a3a3'); elO(c, px+16, py+24, 6, 8, '#1f1f28'); ciO(c, px+4, py+28, 2.2, '#a3a3a3'); ciO(c, px+28, py+27, 1.8, '#a3a3a3'); }
+    if (t==='W'){ rrO(c, px+11, py+8, 10, 22, 1, '#c3c8d1'); for (let i=0;i<4;i++) rr(c, px+11.5, py+12+i*4.5, 9, 0.7, '#a8aeb8'); polyO(c, [[px+9,py+9],[px+16,py+1],[px+23,py+9]], '#4f7fd8'); rrN(c, px+14.3, py+13, 3.4, 4.5, 1.5, '#223'); rrN(c, px+14.3, py+24, 3.4, 6, 1.5, '#223'); }
+    if (t==='K'){ rrO(c, px+3, py+14, 26, 16, 1, '#dde1e7'); for (let i=0;i<3;i++) rr(c, px+4, py+17+i*4.5, 24, 0.7, '#bfc5ce'); rrO(c, px+2, py+7, 8, 23, 1, '#cbd0d8'); rrO(c, px+22, py+7, 8, 23, 1, '#cbd0d8'); polyO(c, [[px+1,py+8],[px+6,py+1],[px+11,py+8]], '#e05252'); polyO(c, [[px+21,py+8],[px+26,py+1],[px+31,py+8]], '#e05252'); c.fillStyle='#4a3b2a'; c.beginPath(); c.ellipse(px+16, py+30, 5, 8, 0, Math.PI, 0); c.fill(); o_(c); rrN(c, px+14.5, py+16, 3, 4, 1.2, '#223'); line(c, px+6, py+1, px+6, py-5, '#333', 1); tri(c, px+6, py-5, px+12, py-3.5, px+6, py-2, '#ffd84d'); }
+    if (t==='I'){ polyO(c, [[px+3,py+18],[px+16,py+3],[px+29,py+18]], '#ff8fb1'); line(c, px+9, py+11, px+23, py+11, '#ff5aa5', 1.4); rrO(c, px+7, py+18, 18, 11, 1, '#fff6e0'); rrO(c, px+14, py+21, 4, 8, 1, '#9a6a3c'); rrO(c, px+9, py+20, 3.5, 3.5, 0.6, '#9fdcff'); starO(c, px+16, py+5.5, 3, '#ffd84d'); ci(c, px+25, py+30, 1.5, '#ff8fb1'); ci(c, px+28, py+29, 1.3, '#ffd84d'); }
+    if (t==='Z'){ rrO(c, px+9, py+2, 14, 28, 1, '#3b3b55'); rrO(c, px+7, py+0, 18, 4, 0.5, '#2a2a40'); for (let i=0;i<4;i++) triO(c, px+7+i*5, py+0, px+8.5+i*5, py-5, px+10+i*5, py+0, '#2a2a40'); rrN(c, px+13, py+8, 6, 7, 1.5, '#c084fc'); rrN(c, px+13, py+22, 6, 8, 1.5, '#15151f'); for (let i=0;i<3;i++) rr(c, px+10, py+16+i*3, 12, 0.6, '#4b4b68'); }
   }
   return base;
 }
@@ -763,122 +809,167 @@ function renderHouse(map){
   for (let y=0;y<map.h;y++) for (let x=0;x<map.w;x++){
     const t = map.rows[y][x], px = x*TILE, py = y*TILE;
     if (t==='#'){ wall(px,py); continue; }
-    if (t==='W'){ wall(px,py); rr(c, px+6, py+5, 20, 18, '#8fd3ff'); rr(c, px+15, py+5, 2, 18, '#fff'); rr(c, px+6, py+13, 20, 2, '#fff'); rr(c, px+3, py+3, 5, 22, '#ff9ecb'); rr(c, px+24, py+3, 5, 22, '#ff9ecb'); continue; }
-    if (t==='D'){ wall(px,py); rr(c, px+6, py+2, 20, 30, '#a0693f'); rr(c, px+8, py+4, 16, 12, '#b57a4a'); ci(c, px+22, py+19, 1.5, '#ffd84d'); continue; }
+    if (t==='W'){ wall(px,py); rrO(c, px+6, py+5, 20, 18, 1, '#8fd3ff'); rr(c, px+15, py+5, 2, 18, '#fff'); rr(c, px+6, py+13, 20, 2, '#fff'); rrO(c, px+3, py+3, 5, 22, 1, '#ff9ecb'); rrO(c, px+24, py+3, 5, 22, 1, '#ff9ecb'); continue; }
+    if (t==='D'){ wall(px,py); rrO(c, px+6, py+2, 20, 30, 2, '#a0693f'); rrN(c, px+8, py+4, 16, 12, 1.5, '#b57a4a'); ci(c, px+22, py+19, 1.5, '#ffd84d'); continue; }
     floor(px,py,x,y);
-    if (t==='B'){ const first = map.rows[y][x-1] !== 'B'; rr(c, px, py+2, TILE, 28, '#c98a4b'); rr(c, px+2, py+6, TILE-2, 22, '#ffb6d5'); for (let i=0;i<3;i++) rr(c, px+2+i*10, py+10, 6, 14, '#ff9ecb'); if (first){ rr(c, px+4, py+7, 11, 9, '#fff'); rr(c, px, py+1, 4, 29, '#a86f38'); } else { rr(c, px+TILE-4, py+1, 4, 29, '#a86f38'); } }
-    if (t==='K'){ rr(c, px+2, py+12, 28, 4, '#a76a3b'); rr(c, px+4, py+16, 3, 12, '#8b5a2b'); rr(c, px+25, py+16, 3, 12, '#8b5a2b'); rr(c, px+5, py+7, 9, 5, '#e03131'); rr(c, px+6, py+5, 9, 5, '#2d9cdb'); rr(c, px+20, py+2, 2, 10, '#555'); el(c, px+21, py+2, 5, 3, '#ffd84d'); }
-    if (t==='M'){ rr(c, px+13, py+25, 6, 5, '#a76a3b'); el(c, px+16, py+13, 10, 13, '#ffd84d'); el(c, px+16, py+13, 8, 11, '#bfe9ff'); rr(c, px+10, py+6, 2, 10, '#fff'); star(c, px+20, py+9, 1.8, '#fff'); }
-    if (t==='S'){ rr(c, px+3, py+2, 26, 28, '#a76a3b'); rr(c, px+5, py+5, 22, 9, '#6e4329'); rr(c, px+5, py+17, 22, 9, '#6e4329'); ['#e03131','#2d9cdb','#4ade80','#ffd84d','#ff8fb1'].forEach((col,i) => { rr(c, px+6+i*4, py+6, 3, 8, col); rr(c, px+6+i*4, py+18, 3, 8, ['#ffd84d','#ff8fb1','#2d9cdb','#4ade80','#e03131'][i]); }); }
-    if (t==='R'){ el(c, px+16, py+16, 15, 12, '#ff9ecb'); el(c, px+16, py+16, 10, 7, '#ffd6ee'); }
+    if (t==='B'){ const first = map.rows[y][x-1] !== 'B'; rr(c, px, py+2, TILE, 28, '#c98a4b'); rr(c, px+2, py+6, TILE-2, 22, '#ffb6d5'); for (let i=0;i<3;i++) rr(c, px+2+i*10, py+10, 6, 14, '#ff9ecb'); if (first){ rrO(c, px+4, py+7, 11, 9, 2, '#fff'); rr(c, px, py+1, 4, 29, '#a86f38'); } else { rr(c, px+TILE-4, py+1, 4, 29, '#a86f38'); } }
+    if (t==='K'){ rrO(c, px+2, py+12, 28, 4, 1, '#a76a3b'); rr(c, px+4, py+16, 3, 12, '#8b5a2b'); rr(c, px+25, py+16, 3, 12, '#8b5a2b'); rrO(c, px+5, py+7, 9, 5, 0.8, '#e03131'); rrO(c, px+6, py+5, 9, 5, 0.8, '#2d9cdb'); rr(c, px+20, py+2, 2, 10, '#555'); elO(c, px+21, py+2, 5, 3, '#ffd84d'); }
+    if (t==='M'){ rrO(c, px+13, py+25, 6, 5, 1, '#a76a3b'); elO(c, px+16, py+13, 10, 13, '#ffd84d'); el(c, px+16, py+13, 8, 11, '#bfe9ff'); rr(c, px+10, py+6, 2, 10, '#fff'); star(c, px+20, py+9, 1.8, '#fff'); }
+    if (t==='S'){ rrO(c, px+3, py+2, 26, 28, 1, '#a76a3b'); rr(c, px+5, py+5, 22, 9, '#6e4329'); rr(c, px+5, py+17, 22, 9, '#6e4329'); ['#e03131','#2d9cdb','#4ade80','#ffd84d','#ff8fb1'].forEach((col,i) => { rr(c, px+6+i*4, py+6, 3, 8, col); rr(c, px+6+i*4, py+18, 3, 8, ['#ffd84d','#ff8fb1','#2d9cdb','#4ade80','#e03131'][i]); }); }
+    if (t==='R'){ elO(c, px+16, py+16, 15, 12, '#ff9ecb'); el(c, px+16, py+16, 10, 7, '#ffd6ee'); }
     if (t==='T'){ emojiAt(c, '🧸', px+16, py+17, 22); }
   }
   return base;
 }
 function ensureBase(map){ if (!map.base) map.base = map.outdoor ? renderOutdoor(map) : renderHouse(map); return map.base; }
 
-// ---- 캐릭터 (32x32 타일 좌표계). 아이템 그림은 ITEM_ART[id] = {phase: fn(c, dir, frame, extra)} ----
-const dressShape = (c, col, w1=10, w2=16, y2=26) => poly(c, [[16-w1/2,16],[16+w1/2,16],[16+w2/2,y2],[16-w2/2,y2]], col);
-const sleeves = (c, col) => { rr(c,7,17,3,6,col); rr(c,22,17,3,6,col); };
-const pantsArt = (c, col, lift) => { rr(c,12,24-lift,3,5,col); rr(c,17,24,3,5,col); };
-const shoeArt = (c, lift, col, sole) => { rr(c,11,28-lift,5,2,col); rr(c,16,28,5,2,col); if (sole){ rr(c,11,29.3-lift,5,0.7,sole); rr(c,16,29.3,5,0.7,sole); } };
-const wingsArt = (c, col, hi) => { el(c,7,19,4,7,col); el(c,25,19,4,7,col); if (hi){ el(c,7,18,2,4,hi); el(c,25,18,2,4,hi); } };
+/* ---------- 캐릭터 (치비). 로컬 좌표: 가로 32, 세로 -12~44, 발 y=42. 타일 (x,y)에 그리면 발이 타일 바닥에 닿음 ----------
+   머리 중심 (16,13.5) 반지름 10.5 / 어깨 y24 / 몸통 24~33 / 치마단 37 / 다리 35~41 / 손 (8,34),(24,34)
+   아이템 그림: ITEM_ART[id] = { back, legs, main, over } 각각 fn(c, dir, frame, extra). dir은 'down'|'left'|'up' (오른쪽은 좌우 반전) */
+const SKIN = '#ffe0c7', SKIN_D = '#f0bf9c';
+const dressO = (c, col, w1=12, w2=18, hem=37, top=24) => { polyO(c, [[16-w1/2, top],[16+w1/2, top],[16+w2/2, hem],[16-w2/2, hem]], col); };
+const hemBand = (c, col, w2=18, hem=37, h=1.8) => { const k = (w2-12)/(hem-24); const y0 = hem-h; const w0 = 12 + k*(y0-24); poly(c, [[16-w0/2,y0],[16+w0/2,y0],[16+w2/2,hem],[16-w2/2,hem]], col); };
+const sleeves = (c, col) => { rrO(c, 6.3, 24.5, 3.4, 7.5, 1.6, col); rrO(c, 22.3, 24.5, 3.4, 7.5, 1.6, col); };
+const pantsArt = (c, col, lf) => { rrO(c, 11.3, 32.5, 4.6, 8-lf.l, 1.3, col); rrO(c, 16.1, 32.5, 4.6, 8-lf.r, 1.3, col); };
+const shoeArt = (c, lf, col, sole) => { rrO(c, 11, 40.2-lf.l, 5.2, 2.6, 1.2, col); rrO(c, 15.8, 40.2-lf.r, 5.2, 2.6, 1.2, col); if (sole){ rr(c, 11.3, 42-lf.l, 4.6, 0.7, sole); rr(c, 16.1, 42, 4.6, 0.7, sole); } };
+const bootsArt = (c, lf, col, trim) => { rrO(c, 11.2, 35.5-lf.l, 5, 7.3, 1.4, col); rrO(c, 15.8, 35.5-lf.r, 5, 7.3, 1.4, col); rr(c, 11.6, 35.8-lf.l, 4.2, 1.3, trim); rr(c, 16.2, 35.8-lf.r, 4.2, 1.3, trim); };
+const wingsArt = (c, col, hi) => { elO(c, 4.6, 27.5, 4.6, 7.5, col, -0.25); elO(c, 27.4, 27.5, 4.6, 7.5, col, 0.25); if (hi){ el(c, 4.8, 26, 2.2, 4, hi); el(c, 27.2, 26, 2.2, 4, hi); } };
+const bowArt = (c, x, y, s, col) => { triO(c, x-4*s, y-2.4*s, x, y, x-4*s, y+2.4*s, col); triO(c, x+4*s, y-2.4*s, x, y, x+4*s, y+2.4*s, col); ciO(c, x, y, 1.3*s, shade(col,-.25)); };
+const flowerArt = (c, x, y, r, col, center='#ffd84d') => { for (let i=0;i<5;i++) ci(c, x+Math.cos(i*1.257-0.3)*r, y+Math.sin(i*1.257-0.3)*r, r*0.72, col); ci(c, x, y, r*0.6, center); };
+// 머리카락 공통: 윗머리(캡) + 앞머리 스캘럽
+function hairCap(c, hc, dir){
+  const hcL = shade(hc, .38);
+  if (dir==='up'){ ciO(c, 16, 13, 11, hc); arc(c, 16, 13, 8.2, 1.15*Math.PI, 1.5*Math.PI, hcL, 1.7); return; }
+  c.beginPath(); c.arc(16, 13.5, 11, Math.PI, 0);              // 윗머리
+  [24.8, 20.4, 16, 11.6, 7.2].forEach(cx => c.arc(cx, 13.3, 2.2, 0, Math.PI, false)); c.closePath();   // 앞머리 스캘럽 (눈 위까지만)
+  c.fillStyle = hc; c.fill(); o_(c);
+  arc(c, 16, 13.5, 8.3, 1.15*Math.PI, 1.48*Math.PI, hcL, 1.7);   // 윤기
+}
+const EYE_Y = 18;   // 치비: 눈은 얼굴 아래쪽에, 앞머리는 눈 위에서 끝남
+function drawFace(c, dir, o){
+  const eye = (x, y, rx, ry, hl) => {
+    elO(c, x, y, rx, ry, '#fff'); el(c, x+0.1, y+0.4, rx*0.7, ry*0.74, '#6b4030'); el(c, x+0.15, y+0.75, rx*0.4, ry*0.45, '#1d110c');
+    ci(c, x-rx*0.32, y-ry*0.32, rx*0.4, '#fff'); ci(c, x+rx*0.38, y+ry*0.42, rx*0.18, '#fff');
+    arc(c, x, y, rx+0.1, 1.18*Math.PI, 1.82*Math.PI, OUT, 1.0);                                  // 윗속눈썹
+    if (hl === 'L') line(c, x-rx, y-ry*0.45, x-rx-0.9, y-ry*0.85, OUT, 0.8); else line(c, x+rx, y-ry*0.45, x+rx+0.9, y-ry*0.85, OUT, 0.8);
+  };
+  if (dir==='down'){
+    ciO(c, 5.6, 17, 1.9, SKIN); ciO(c, 26.4, 17, 1.9, SKIN);                                     // 귀
+    el(c, 9.4, 21, 2, 1.15, 'rgba(255,110,150,.42)'); el(c, 22.6, 21, 2, 1.15, 'rgba(255,110,150,.42)');
+    eye(12, EYE_Y, 2.5, 3.1, 'L'); eye(20, EYE_Y, 2.5, 3.1, 'R');
+    ci(c, 16, 20.6, 0.4, SKIN_D); arc(c, 16, 21.6, 1.4, 0.15*Math.PI, 0.85*Math.PI, '#c0392b', 0.75);
+  } else { // left (옆모습 3/4)
+    ciO(c, 26.4, 17, 1.9, SKIN);
+    el(c, 7.6, 21, 1.7, 1.05, 'rgba(255,110,150,.42)'); el(c, 18.8, 21, 1.7, 1.05, 'rgba(255,110,150,.42)');
+    eye(10.4, EYE_Y, 1.9, 3.0, 'L'); eye(16.8, EYE_Y, 2.3, 3.1, 'L');
+    ci(c, 7.6, 20.2, 0.45, SKIN_D); arc(c, 11.8, 21.6, 1.3, 0.2*Math.PI, 0.9*Math.PI, '#c0392b', 0.75);
+  }
+}
 const ITEM_ART = {
-  outfit_track:   {legs:(c,d,f,l)=>pantsArt(c,'#f4f4f4',l), main:c=>{ sleeves(c,'#fff'); rr(c,11,16,10,9,'#fff'); rr(c,11,19.5,10,1.2,'#ff9ecb'); rr(c,7,22,3,1.5,'#f6c9a0'); rr(c,22,22,3,1.5,'#f6c9a0'); }},
-  outfit_pink:    {main:c=>{ dressShape(c,'#ff6fa8'); rr(c,13,17,6,2,'#fff'); }},
-  outfit_sky:     {main:c=>{ dressShape(c,'#7cc4ff'); [[13,19],[17,21],[14,24],[19,24]].forEach(p=>ci(c,p[0],p[1],0.9,'#fff')); rr(c,13,17,6,1.5,'#fff'); }},
-  outfit_rain:    {legs:(c,d,f,l)=>pantsArt(c,'#ffd23f',l), main:c=>{ sleeves(c,'#ffd23f'); rr(c,10,16,12,11,'#ffd23f'); [19,22,25].forEach(y=>ci(c,16,y,0.8,'#333')); rr(c,10,16,12,1,'#e6b800'); }},
-  outfit_overall: {legs:(c,d,f,l)=>pantsArt(c,'#4a7bd9',l), main:c=>{ rr(c,11,16,10,4,'#fff'); rr(c,11,19,10,7,'#4a7bd9'); rr(c,12,16,2,4,'#4a7bd9'); rr(c,18,16,2,4,'#4a7bd9'); rr(c,14,21,4,3,'#6b94e8'); }},
-  outfit_flower:  {main:c=>{ dressShape(c,'#fff2a8'); [[13,19],[18,20],[15,23],[20,24],[11,24]].forEach(p=>{ ci(c,p[0],p[1],1.1,'#ff6fa8'); ci(c,p[0],p[1],0.4,'#ffd84d'); }); }},
-  outfit_sailor:  {main:c=>{ rr(c,11,16,10,6,'#fff'); dressShape(c,'#2b4a8f',10,16,27); rr(c,11,16,10,6,'#fff'); tri(c,11,16,21,16,16,20,'#2b4a8f'); rr(c,15,19,2,3,'#e03131'); for (let i=0;i<4;i++) rr(c,9.5+i*3.5,23,1,4,'#1d3568'); }},
-  outfit_rainbow: {legs:(c,d,f,l)=>pantsArt(c,'#4a7bd9',l), main:c=>{ sleeves(c,'#fff'); rr(c,11,16,10,9,'#fff'); ['#ff5a5a','#ffd166','#4ade80','#60a5fa'].forEach((col,i)=>rr(c,11,18+i*1.5,10,1.2,col)); }},
-  outfit_pajama:  {legs:(c,d,f,l)=>pantsArt(c,'#bfe3ff',l), main:c=>{ sleeves(c,'#bfe3ff'); rr(c,11,16,10,9,'#bfe3ff'); ci(c,14,19,1.2,'#ffd84d'); ci(c,18,22,1.2,'#ffd84d'); star(c,19,18,1,'#fff'); }},
-  outfit_wizard:  {main:c=>{ dressShape(c,'#7b4fd1',10,18,28); sleeves(c,'#7b4fd1'); star(c,14,20,1.3,'#ffd84d'); star(c,18,24,1.3,'#ffd84d'); rr(c,11,16,10,1.5,'#5b3fb0'); }},
-  outfit_hanbok:  {main:c=>{ dressShape(c,'#3ec1d3',10,20,28); rr(c,10,16,12,5,'#ff5d7a'); rr(c,13,16,6,1.5,'#fff'); rr(c,15.5,18,1.5,5,'#ffd84d'); sleeves(c,'#ff5d7a'); rr(c,6,21,22,1.2,'#ffd84d'); }},
-  outfit_princess:{main:c=>{ dressShape(c,'#e58cff',10,22,28); rr(c,5,27,22,1.5,'#ffd84d'); rr(c,11,16,10,4,'#ffb8ff'); ci(c,8,18,2.5,'#ffb8ff'); ci(c,24,18,2.5,'#ffb8ff'); [[12,22],[18,21],[15,25],[21,25],[9,25]].forEach(p=>ci(c,p[0],p[1],0.7,'#fff')); }},
-  shoes_sneaker:  {main:(c,d,f,l)=>shoeArt(c,l,'#fff','#bbb')},
-  shoes_red:      {main:(c,d,f,l)=>{ shoeArt(c,l,'#e03131'); ci(c,13,28.5-l,0.6,'#fff'); ci(c,18,28.5,0.6,'#fff'); }},
-  shoes_sandal:   {main:(c,d,f,l)=>{ rr(c,11,29-l,5,1,'#8b5a2b'); rr(c,16,29,5,1,'#8b5a2b'); rr(c,12,27.5-l,3,1,'#8b5a2b'); rr(c,17,27.5,3,1,'#8b5a2b'); }},
-  shoes_star:     {main:(c,d,f,l)=>{ shoeArt(c,l,'#4a7bd9','#fff'); star(c,13.5,28.6-l,1,'#ffd84d'); star(c,18.5,28.6,1,'#ffd84d'); }},
-  shoes_boots:    {main:(c,d,f,l)=>{ rr(c,11,24-l,5,6,'#ffd23f'); rr(c,16,24,5,6,'#ffd23f'); rr(c,11,29-l,5,1,'#e6b800'); rr(c,16,29,5,1,'#e6b800'); }},
-  shoes_pinkboots:{main:(c,d,f,l)=>{ rr(c,11,24-l,5,6,'#ff6fa8'); rr(c,16,24,5,6,'#ff6fa8'); rr(c,11,24-l,5,1.2,'#fff'); rr(c,16,24,5,1.2,'#fff'); }},
-  hair_twin:  {main:(c,d,f,hc)=>{ ci(c,8,13,3.5,hc); ci(c,24,13,3.5,hc); rr(c,6.5,10.5,3,2,'#ffd84d'); rr(c,22.5,10.5,3,2,'#ffd84d'); }},
-  hair_bob:   {main:(c,d,f,hc)=>{ rr(c,8,9,2.5,7,hc); rr(c,21.5,9,2.5,7,hc); }},
-  hair_long:  {main:(c,d,f,hc)=>{ rr(c,8,9,3,11,hc); rr(c,21,9,3,11,hc); ci(c,9.5,20,1.5,hc); ci(c,22.5,20,1.5,hc); }},
-  hair_buns:  {main:(c,d,f,hc)=>{ ci(c,10,4,3,hc); ci(c,22,4,3,hc); ci(c,10,4,1,'#ffd84d'); ci(c,22,4,1,'#ffd84d'); }},
-  hair_pony:  {main:(c,d,f,hc)=>{ ci(c,23.5,8,2.5,hc); rr(c,22.5,8,3,9,hc); ci(c,24,17,1.6,hc); rr(c,22.5,9,3,1.2,'#ff5aa5'); }},
-  hair_braid: {main:(c,d,f,hc)=>{ [13,16.5,20].forEach((y,i)=>{ ci(c,8,y,1.8-i*0.1,hc); ci(c,24,y,1.8-i*0.1,hc); }); rr(c,7,22,2,1,'#ff5aa5'); rr(c,23,22,2,1,'#ff5aa5'); }},
-  hat_ribbon:    {main:c=>{ tri(c,10,1,15,3.5,10,6,'#ff5aa5'); tri(c,22,1,17,3.5,22,6,'#ff5aa5'); rr(c,14.5,2,3,3,'#e0338a'); }},
-  hat_flower:    {main:c=>{ for (let i=0;i<5;i++) ci(c,22+Math.cos(i*1.257)*1.9,6+Math.sin(i*1.257)*1.9,1.3,'#ff9ecb'); ci(c,22,6,1.1,'#ffd84d'); }},
-  hat_cat:       {main:(c,d,f,hc)=>{ tri(c,9,8,11,1,14,6,hc); tri(c,18,6,21,1,23,8,hc); tri(c,10,7,11.3,3,13,6,'#ffb6d5'); tri(c,19,6,20.7,3,22,7,'#ffb6d5'); }},
-  hat_band:      {main:c=>{ rr(c,9,3.5,14,1.8,'#ff5aa5'); ci(c,12,4.4,1,'#fff'); ci(c,20,4.4,1,'#fff'); }},
-  hat_star:      {main:c=>star(c,22,6,2.4,'#ffd84d')},
-  hat_butterfly: {main:c=>{ ci(c,20.8,4.8,1.6,'#5ac8fa'); ci(c,23.6,4.8,1.6,'#5ac8fa'); ci(c,21,7.3,1.2,'#8ad8ff'); ci(c,23.4,7.3,1.2,'#8ad8ff'); rr(c,21.8,4,0.8,4,'#333'); }},
-  hat_wreath:    {main:c=>{ ['#ff5aa5','#ffd84d','#fff','#ff8c42','#ff5aa5','#ffd84d','#fff'].forEach((col,i)=>{ const a = Math.PI*(1.08+i*0.14); ci(c,16+Math.cos(a)*7.6,9+Math.sin(a)*7.6,1.3,col); }); }},
-  hat_tiara:     {main:c=>{ rr(c,10,4,12,1.8,'#ffd84d'); tri(c,11,4,13,0,15,4,'#ffd84d'); tri(c,14.5,4,16,-1.5,17.5,4,'#ffd84d'); tri(c,17,4,19,0,21,4,'#ffd84d'); ci(c,16,2.2,1,'#ff5aa5'); }},
-  hat_bunny:     {main:c=>{ rr(c,11,-5,3,9,'#fff'); rr(c,18,-5,3,9,'#fff'); rr(c,12,-4,1,7,'#ffb6d5'); rr(c,19,-4,1,7,'#ffb6d5'); }},
-  hat_straw:     {main:c=>{ el(c,16,5,12,2.6,'#f0c860'); rr(c,10,0,12,5.5,'#f6d57a'); rr(c,10,3.5,12,1.5,'#e03131'); }},
-  hat_wizard:    {main:c=>{ tri(c,7,5,16,-8,25,5,'#5b3fb0'); rr(c,5,4,22,2.5,'#5b3fb0'); star(c,16,-1,1.6,'#ffd84d'); }},
-  hat_crown:     {main:c=>{ rr(c,10,1,12,4,'#ffd84d'); tri(c,10,1,12,-3,14,1,'#ffd84d'); tri(c,14,1,16,-4,18,1,'#ffd84d'); tri(c,18,1,20,-3,22,1,'#ffd84d'); ci(c,13,3,1,'#e03131'); ci(c,19,3,1,'#2d9cdb'); ci(c,16,2.5,1,'#4ade80'); }},
-  face_blush:    {main:c=>{ el(c,12,14,1.6,1,'rgba(255,120,160,.8)'); el(c,20,14,1.6,1,'rgba(255,120,160,.8)'); }},
-  face_star:     {main:c=>star(c,20.5,13.6,1.5,'#ffd84d')},
-  face_heart:    {main:c=>heart(c,11.5,13.4,1.3,'#ff5aa5')},
-  face_freckles: {main:c=>[[12,14],[13.5,14.6],[19,14],[20.5,14.6]].forEach(p=>ci(c,p[0],p[1],0.45,'#d9955a'))},
-  face_glasses:  {main:c=>{ ring(c,13.5,12,2.3,'#333',0.8); ring(c,18.5,12,2.3,'#333',0.8); line(c,15.8,12,16.2,12,'#333',0.8); }},
-  face_sun:      {main:c=>{ ci(c,13.5,12,2.3,'#222'); ci(c,18.5,12,2.3,'#222'); line(c,15.8,12,16.2,12,'#222',1); ci(c,12.8,11.3,0.6,'#888'); }},
-  face_sparkle:  {main:c=>{ star(c,10.5,8,1.3,'#fff'); star(c,21.5,7,1,'#ffd84d'); star(c,12,15.5,0.8,'#ffd84d'); }},
-  neck_pearl:    {main:c=>[[12.5,17],[14,18.3],[16,18.8],[18,18.3],[19.5,17]].forEach(p=>{ ci(c,p[0],p[1],0.95,'#fff'); ring(c,p[0],p[1],0.95,'#ccc',0.3); })},
-  neck_heart:    {main:c=>{ line(c,12,16.5,16,19,'#ffd84d',0.6); line(c,16,19,20,16.5,'#ffd84d',0.6); heart(c,16,19.6,1.3,'#ff5aa5'); }},
-  neck_scarf:    {main:c=>{ rr(c,12,16,8,2.5,'#e03131'); rr(c,18,18,2.5,4,'#e03131'); rr(c,18,21,2.5,1,'#ffd84d'); }},
-  neck_bow:      {main:c=>{ tri(c,12.5,16.5,16,18,12.5,19.5,'#e03131'); tri(c,19.5,16.5,16,18,19.5,19.5,'#e03131'); rr(c,15.3,17.3,1.4,1.4,'#a52020'); }},
-  neck_star:     {main:c=>{ line(c,12,16.5,16,19,'#ffd84d',0.6); line(c,16,19,20,16.5,'#ffd84d',0.6); star(c,16,19.8,1.6,'#ffd84d'); }},
-  neck_lei:      {main:c=>[[12,16.8,'#ff5aa5'],[13.5,18.2,'#ffd84d'],[15.2,19,'#fff'],[16.8,19,'#ff8c42'],[18.5,18.2,'#ff5aa5'],[20,16.8,'#ffd84d']].forEach(p=>ci(c,p[0],p[1],0.9,p[2]))},
-  wrist_pink:    {main:c=>{ rr(c,7,22,3,1.6,'#ff5aa5'); rr(c,22,22,3,1.6,'#ff5aa5'); }},
-  wrist_beads:   {main:c=>['#ff5aa5','#ffd84d','#5ac8fa'].forEach((col,i)=>{ ci(c,7.6+i*0.9,22.8,0.5,col); ci(c,22.6+i*0.9,22.8,0.5,col); })},
-  wrist_gold:    {main:c=>{ rr(c,7,22,3,1.4,'#ffd84d'); rr(c,22,22,3,1.4,'#ffd84d'); }},
-  wrist_flower:  {main:c=>{ ci(c,8.5,22.8,1.5,'#ff9ecb'); ci(c,8.5,22.8,0.6,'#ffd84d'); ci(c,23.5,22.8,1.5,'#ff9ecb'); ci(c,23.5,22.8,0.6,'#ffd84d'); }},
-  wrist_watch:   {main:c=>{ rr(c,7,21.5,3,2.5,'#4a7bd9'); ci(c,8.5,22.7,0.9,'#fff'); }},
-  wrist_rainbow: {main:c=>['#ff5a5a','#ffd166','#4ade80'].forEach((col,i)=>{ rr(c,7,21.8+i*0.7,3,0.6,col); rr(c,22,21.8+i*0.7,3,0.6,col); })},
-  back_fairy:    {back:c=>wingsArt(c,'rgba(120,230,255,.75)','rgba(255,255,255,.7)')},
-  back_angel:    {back:c=>{ wingsArt(c,'#fff'); el(c,7,19,4,7,'#fff'); el(c,25,19,4,7,'#fff'); ring(c,7,19,4,'#ddd',0.4); ring(c,25,19,4,'#ddd',0.4); }},
-  back_butterfly:{back:c=>{ el(c,6,17,4.5,4.5,'#ff8c42'); el(c,26,17,4.5,4.5,'#ff8c42'); el(c,7,23,3.5,3.5,'#ffd84d'); el(c,25,23,3.5,3.5,'#ffd84d'); ci(c,6,17,1.5,'#fff'); ci(c,26,17,1.5,'#fff'); }},
-  back_cape:     {back:c=>{ poly(c,[[9,16],[23,16],[25,28],[7,28]],'#e03131'); }, over:c=>rr(c,12,16,8,1.6,'#ffd84d')},
-  back_rainbow:  {back:c=>{ ['#ff5a5a','#ffd166','#4ade80','#60a5fa','#c084fc'].forEach((col,i)=>poly(c,[[9+i*0.3,16],[23-i*0.3,16],[25-i*0.6,28],[7+i*0.6,28]],col)); }},
-  back_bag:      {back:c=>{ rr(c,8,17,16,10,'#e8554e'); rr(c,8,17,16,2,'#c0392b'); }, over:c=>{ rr(c,12,16,2,9,'#c0392b'); rr(c,18,16,2,9,'#c0392b'); }},
-  hand_flowers:  {main:c=>{ rr(c,25.5,18,1,5,'#3a9d3a'); tri(c,24,19,28,19,26,23,'#ffd6ee'); ci(c,24.5,16,1.6,'#ff5aa5'); ci(c,27.2,15.5,1.6,'#ffd84d'); ci(c,26,17.8,1.4,'#ff8c42'); }},
-  hand_lolly:    {main:c=>{ rr(c,25.7,16,1,8,'#fff'); ci(c,26.2,14,2.8,'#ff5aa5'); ring(c,26.2,14,1.4,'#fff',0.7); }},
-  hand_bear:     {main:c=>{ ci(c,27,21,2.8,'#b07a45'); ci(c,27,17.5,2.2,'#b07a45'); ci(c,25.4,16,0.9,'#b07a45'); ci(c,28.6,16,0.9,'#b07a45'); ci(c,26.3,17.3,0.35,'#222'); ci(c,27.7,17.3,0.35,'#222'); ci(c,27,18.3,0.4,'#222'); }},
-  hand_wand:     {main:c=>{ rr(c,25.5,14,1.2,10,'#8b5a2b'); star(c,26.1,12.5,2.6,'#ffd84d'); ci(c,29,10.5,0.6,'#fff'); ci(c,23.5,11,0.5,'#fff'); }},
-  hand_balloon:  {main:c=>{ line(c,25,21,28,10,'#999',0.6); ci(c,28,6.8,3.6,'#ff5a5a'); ci(c,27,5.6,1,'rgba(255,255,255,.8)'); tri(c,27.2,10.3,28.8,10.3,28,11.5,'#ff5a5a'); }},
-  hand_umbrella: {main:c=>{ rr(c,26,11,1.6,13,'#ff9ecb'); tri(c,25.4,11,28.2,11,26.8,8,'#ff9ecb'); rr(c,26.3,24,1,2.5,'#8b5a2b'); ci(c,27.5,26.5,1,'#8b5a2b'); ci(c,27.5,26.5,0.4,'#f6c9a0'); }},
-  hand_flag:     {main:c=>{ rr(c,25.5,9,1,15,'#8b5a2b'); tri(c,26.5,9.5,32,12,26.5,14.5,'#ff5aa5'); star(c,28.5,12,1.1,'#fff'); }},
-  hand_basket:   {main:c=>{ rr(c,24,20.5,6,4,'#c99a5b'); line(c,24.5,20.5,27,17,'#8b5a2b',0.8); line(c,29.5,20.5,27,17,'#8b5a2b',0.8); ci(c,25.5,20.2,1,'#e03131'); ci(c,28.5,20.2,1,'#4ade80'); }},
+  /* 옷 */
+  outfit_track:   {legs:(c,d,f,lf)=>pantsArt(c,'#f5f5f7',lf), main:c=>{ sleeves(c,'#fff'); rrO(c,9.8,23.6,12.4,10.4,1.8,'#fff'); rr(c,10.3,27.2,11.4,1.4,'#ff9ecb'); rr(c,10.3,29.2,11.4,0.7,'#ff9ecb'); rrN(c,14.6,23.6,2.8,1.6,0.6,'#ffd6ea'); }},
+  outfit_pink:    {main:c=>{ dressO(c,'#ff6fa8'); hemBand(c,'#ff9ecb'); rr(c,10.6,28.6,10.8,1.2,'#ffd6ea'); rrO(c,13.2,23.6,5.6,2.4,1.2,'#fff'); }},
+  outfit_sky:     {main:c=>{ dressO(c,'#7cc4ff'); hemBand(c,'#b3dcff'); [[12,28],[17.5,30.5],[13.5,33.5],[20,34.5],[10,34]].forEach(p=>ci(c,p[0],p[1],0.9,'#fff')); rrO(c,13.2,23.6,5.6,2.2,1.1,'#fff'); }},
+  outfit_rain:    {legs:(c,d,f,lf)=>pantsArt(c,'#ffd23f',lf), main:c=>{ sleeves(c,'#ffd23f'); rrO(c,9.6,23.6,12.8,12,2.2,'#ffd23f'); [27,30,33].forEach(y=>ci(c,16,y,0.8,'#5a4a10')); rr(c,10.2,24.4,11.6,1.6,'#e6b800'); rrO(c,13.5,22.6,5,2,1,'#ffe27a'); }},
+  outfit_overall: {legs:(c,d,f,lf)=>pantsArt(c,'#4a7bd9',lf), main:c=>{ sleeves(c,'#fff'); rrO(c,10,23.6,12,6,1.6,'#fff'); rrO(c,10,28.5,12,5.5,1.2,'#4a7bd9'); rr(c,11.6,23.8,2,5.5,'#4a7bd9'); rr(c,18.4,23.8,2,5.5,'#4a7bd9'); rrO(c,13.6,29.6,4.8,3,0.8,'#6b94e8'); ci(c,12.6,29.1,0.6,'#ffd84d'); ci(c,19.4,29.1,0.6,'#ffd84d'); }},
+  outfit_flower:  {main:c=>{ dressO(c,'#fff2a8'); hemBand(c,'#ffe27a'); [[12,28.5],[18.5,27.5],[15,32],[21,34],[10.5,34.5]].forEach(p=>flowerArt(c,p[0],p[1],1.25,'#ff6fa8')); rrO(c,13.2,23.6,5.6,2.2,1.1,'#fff'); }},
+  outfit_sailor:  {main:c=>{ dressO(c,'#2b4a8f',12,19,37,30); for (let i=0;i<5;i++) line(c,10.5+i*2.8,31,9.3+i*3.3,36.6,'#1d3568',0.8); rrO(c,10,23.6,12,7,1.6,'#fff'); polyO(c,[[10,23.6],[22,23.6],[16,29]],'#2b4a8f'); rr(c,10.8,24.4,10.4,0.6,'#fff'); rrO(c,15,27.5,2,3.5,0.8,'#e03131'); }},
+  outfit_rainbow: {legs:(c,d,f,lf)=>pantsArt(c,'#4a7bd9',lf), main:c=>{ sleeves(c,'#fff'); rrO(c,9.8,23.6,12.4,10.4,1.8,'#fff'); ['#ff5a5a','#ffb347','#ffd166','#4ade80','#60a5fa','#c084fc'].forEach((col,i)=>rr(c,10.3,25.5+i*1.3,11.4,1.1,col)); }},
+  outfit_pajama:  {legs:(c,d,f,lf)=>pantsArt(c,'#bfe3ff',lf), main:c=>{ sleeves(c,'#bfe3ff'); rrO(c,9.8,23.6,12.4,10.4,1.8,'#bfe3ff'); [[12.5,27],[18.5,31.5]].forEach(p=>{ ci(c,p[0],p[1],1.4,'#ffd84d'); ci(c,p[0]+0.6,p[1]-0.4,1.2,'#bfe3ff'); }); star(c,19.5,26.5,1,'#fff'); star(c,12.5,32,0.9,'#fff'); }},
+  outfit_wizard:  {main:c=>{ dressO(c,'#7b4fd1',12,20,39); hemBand(c,'#5b3fb0',20,39,2); sleeves(c,'#7b4fd1'); star(c,13.5,29,1.5,'#ffd84d'); star(c,19,34,1.4,'#ffd84d'); ci(c,18.5,27.5,0.6,'#fff'); rr(c,10,23.6,12,1.6,'#5b3fb0'); }},
+  outfit_hanbok:  {main:c=>{ dressO(c,'#3ec1d3',12,22,39,29); hemBand(c,'#2aa7b8',22,39,2.2); rrO(c,9.6,23.6,12.8,6.4,1.4,'#ff5d7a'); line(c,12,23.8,16.5,28.6,'#fff',1.3); line(c,20,23.8,16.5,28.6,'#fff',1.3); rrN(c,13.2,27.6,1.5,5.5,0.6,'#ffd84d'); rrN(c,15.2,27.6,1.5,6.5,0.6,'#ffd84d'); sleeves(c,'#ff5d7a'); rr(c,6.6,27.8,2.8,1.4,'#3ec1d3'); rr(c,22.6,27.8,2.8,1.4,'#3ec1d3'); rr(c,5,29,22,1.4,'#ffd84d'); [[11,33],[21,33],[16,36.5]].forEach(p=>flowerArt(c,p[0],p[1],1,'#ffd6ee','#fff')); }},
+  outfit_princess:{main:c=>{ dressO(c,'#e58cff',12,26,40); hemBand(c,'#ffd84d',26,40,1.8); rrO(c,10,23.6,12,5,1.5,'#ffb8ff'); ciO(c,7.5,25.5,2.8,'#ffb8ff'); ciO(c,24.5,25.5,2.8,'#ffb8ff'); [[12,30],[19,29],[15,34],[22,36],[9,36],[16.5,38]].forEach(p=>star(c,p[0],p[1],0.9,'#fff')); rr(c,10.5,28.3,11,1,'#ffd84d'); }},
+  /* 신발 */
+  shoes_sneaker:  {main:(c,d,f,lf)=>{ shoeArt(c,lf,'#fff','#c9c9c9'); ci(c,13.6,41.4-lf.l,0.5,'#ff9ecb'); ci(c,18.4,41.4-lf.r,0.5,'#ff9ecb'); }},
+  shoes_red:      {main:(c,d,f,lf)=>{ shoeArt(c,lf,'#e03131'); ci(c,13.6,40.9-lf.l,0.7,'#fff'); ci(c,18.4,40.9-lf.r,0.7,'#fff'); }},
+  shoes_sandal:   {main:(c,d,f,lf)=>{ rr(c,11,41.6-lf.l,5.2,1.2,'#8b5a2b'); rr(c,15.8,41.6-lf.r,5.2,1.2,'#8b5a2b'); rr(c,12,39.6-lf.l,3.2,0.9,'#8b5a2b'); rr(c,16.8,39.6-lf.r,3.2,0.9,'#8b5a2b'); }},
+  shoes_star:     {main:(c,d,f,lf)=>{ shoeArt(c,lf,'#4a7bd9','#fff'); star(c,13.6,41.3-lf.l,1,'#ffd84d'); star(c,18.4,41.3-lf.r,1,'#ffd84d'); }},
+  shoes_boots:    {main:(c,d,f,lf)=>bootsArt(c,lf,'#ffd23f','#e6b800')},
+  shoes_pinkboots:{main:(c,d,f,lf)=>{ bootsArt(c,lf,'#ff6fa8','#fff'); heart(c,13.7,39.5-lf.l,0.8,'#fff'); heart(c,18.3,39.5-lf.r,0.8,'#fff'); }},
+  /* 머리모양: back(뒤에 그리는 부분) + main(캡/앞머리 + 앞 장식) */
+  hair_twin:  {back:(c,d,f,x)=>{ if (d==='up'){ ciO(c,4.5,20,4.2,x.hc); ciO(c,27.5,20,4.2,x.hc); return; } ciO(c,4.6,21,4.3,x.hc); ciO(c,27.4,21,4.3,x.hc); el(c,3.6,19.6,1.4,2.2,x.hcL); el(c,26.4,19.6,1.4,2.2,x.hcL); },
+               main:(c,d,f,x)=>{ hairCap(c,x.hc,d); bowArt(c,5.4,16.4,0.75,'#ffd84d'); bowArt(c,26.6,16.4,0.75,'#ffd84d'); }},
+  hair_bob:   {back:(c,d,f,x)=>{ rrO(c,4.6,11,3.6,12,1.8,x.hc); rrO(c,23.8,11,3.6,12,1.8,x.hc); }, main:(c,d,f,x)=>hairCap(c,x.hc,d)},
+  hair_long:  {back:(c,d,f,x)=>{ rrO(c,4.2,11,4,24,2,x.hc); rrO(c,23.8,11,4,24,2,x.hc); rr(c,5,13,1.2,18,x.hcL); rr(c,24.6,13,1.2,18,x.hcL); if (d==='up') rrO(c,8,20,16,15,4,x.hc); }, main:(c,d,f,x)=>hairCap(c,x.hc,d)},
+  hair_buns:  {main:(c,d,f,x)=>{ hairCap(c,x.hc,d); ciO(c,8,4.2,3.6,x.hc); ciO(c,24,4.2,3.6,x.hc); ci(c,7.2,3.2,1.2,x.hcL); ci(c,23.2,3.2,1.2,x.hcL); ci(c,8,7.3,1,'#ff5aa5'); ci(c,24,7.3,1,'#ff5aa5'); }},
+  hair_pony:  {back:(c,d,f,x)=>{ const px = d==='up' ? 16 : 25.5; ciO(c,px,6,3,x.hc); rrO(c,px-2,6,4,20,2,x.hc); rr(c,px-0.6,8,1.2,15,x.hcL); rrO(c,px-2.4,8.5,4.8,2,0.8,'#ff5aa5'); }, main:(c,d,f,x)=>hairCap(c,x.hc,d)},
+  hair_braid: {back:(c,d,f,x)=>{ [[5.5,14],[5.2,18.5],[5.6,23],[5.3,27.5]].forEach(p=>ciO(c,p[0],p[1],2.3,x.hc)); [[26.5,14],[26.8,18.5],[26.4,23],[26.7,27.5]].forEach(p=>ciO(c,p[0],p[1],2.3,x.hc)); rrO(c,4,29.5,3,2,0.8,'#ff5aa5'); rrO(c,25,29.5,3,2,0.8,'#ff5aa5'); }, main:(c,d,f,x)=>hairCap(c,x.hc,d)},
+  /* 머리장식 (머리 위 y≈3 기준) */
+  hat_ribbon:    {main:c=>bowArt(c,10,3.6,1.15,'#ff5aa5')},
+  hat_flower:    {main:c=>{ flowerArt(c,23.5,6.5,2.1,'#ff9ecb'); ci(c,23.5,6.5,0.9,'#ffd84d'); }},
+  hat_cat:       {main:(c,d,f,x)=>{ triO(c,6.5,10,8.8,0.5,13.2,5.6,x.hc); triO(c,18.8,5.6,23.2,0.5,25.5,10,x.hc); tri(c,8.2,8.6,9.2,3.2,12,5.8,'#ffb6d5'); tri(c,20,5.8,22.8,3.2,23.8,8.6,'#ffb6d5'); }},
+  hat_band:      {main:c=>{ arc(c,16,13.5,10.2,1.08*Math.PI,1.92*Math.PI,'#ff5aa5',2.2); arc(c,16,13.5,10.2,1.08*Math.PI,1.92*Math.PI,OUT,0.5); ci(c,10,4.4,1.1,'#fff'); ci(c,22,4.4,1.1,'#fff'); }},
+  hat_star:      {main:c=>{ starO(c,23.5,6,2.8,'#ffd84d'); ci(c,24.3,5.2,0.5,'#fff'); }},
+  hat_butterfly: {main:c=>{ elO(c,22,5,2,2.3,'#5ac8fa',-0.4); elO(c,25.4,5,2,2.3,'#5ac8fa',0.4); el(c,22.3,8,1.5,1.3,'#8ad8ff'); el(c,25.1,8,1.5,1.3,'#8ad8ff'); rr(c,23.3,3.8,0.9,5,'#333'); }},
+  hat_wreath:    {main:c=>{ ['#ff5aa5','#ffd84d','#fff','#ff8c42','#c9a0ff','#ff5aa5','#ffd84d','#fff','#ff8c42'].forEach((col,i)=>{ const a = Math.PI*(1.05+i*0.1125); const x = 16+Math.cos(a)*10.6, y = 13.5+Math.sin(a)*10.6; ci(c,x,y,1.8,'#4caf50'); flowerArt(c,x,y,1.45,col,'#fff3a0'); }); }},
+  hat_tiara:     {main:c=>{ arc(c,16,13.5,10.4,1.22*Math.PI,1.78*Math.PI,'#ffd84d',2); triO(c,11,4,13,-0.5,15,3.4,'#ffd84d'); triO(c,14.4,3.3,16,-2,17.6,3.3,'#ffd84d'); triO(c,17,3.4,19,-0.5,21,4,'#ffd84d'); ci(c,16,1.2,1.1,'#ff5aa5'); ci(c,13,2.3,0.7,'#5ac8fa'); ci(c,19,2.3,0.7,'#5ac8fa'); }},
+  hat_bunny:     {main:c=>{ elO(c,11,-3,2.6,8,'#fff',-0.12); elO(c,21,-3,2.6,8,'#fff',0.12); el(c,11,-2.5,1.2,5.5,'#ffb6d5',-0.12); el(c,21,-2.5,1.2,5.5,'#ffb6d5',0.12); }},
+  hat_straw:     {main:c=>{ elO(c,16,5.5,13.5,3,'#f0c860'); rrO(c,9,-1,14,7,3,'#f6d57a'); rr(c,9.4,3.2,13.2,1.8,'#e03131'); el(c,16,5.5,13.5,3,'rgba(0,0,0,0)'); line(c,4,5.5,28,5.5,shade('#f0c860',-.2),0.6); }},
+  hat_wizard:    {main:c=>{ polyO(c,[[6,5],[16,-12],[26,5]],'#5b3fb0'); elO(c,16,5.2,12.5,2.6,'#5b3fb0'); star(c,16.5,-3,1.9,'#ffd84d'); ci(c,12.5,1.5,0.7,'#ffd84d'); rr(c,8,3.2,16,1.6,'#8e6bff'); }},
+  hat_crown:     {main:c=>{ polyO(c,[[8,4.5],[8,-2],[11.5,1.5],[16,-4.5],[20.5,1.5],[24,-2],[24,4.5]],'#ffd84d'); rr(c,8.6,3.2,14.8,1.4,'#e0a800'); ci(c,16,0.3,1.1,'#e03131'); ci(c,11.3,2.2,0.8,'#2d9cdb'); ci(c,20.7,2.2,0.8,'#4ade80'); ci(c,8,-2,0.9,'#fff3a0'); ci(c,24,-2,0.9,'#fff3a0'); ci(c,16,-4.5,0.9,'#fff3a0'); }},
+  /* 얼굴 (뒤돌면 안 그림) */
+  face_blush:    {main:(c,d)=>{ const L = d==='down' ? 9.4 : 7.6, R = d==='down' ? 22.6 : 18.8; el(c,L,21,2.4,1.5,'rgba(255,90,140,.55)'); el(c,R,21,2.4,1.5,'rgba(255,90,140,.55)'); heart(c,L,21,0.75,'rgba(255,255,255,.75)'); heart(c,R,21,0.75,'rgba(255,255,255,.75)'); }},
+  face_star:     {main:(c,d)=>star(c,d==='down'?23.2:19.4,21,1.6,'#ffd84d')},
+  face_heart:    {main:(c,d)=>heart(c,d==='down'?9:7.4,21,1.4,'#ff5aa5')},
+  face_freckles: {main:(c,d)=>{ const xs = d==='down' ? [8.4,10.1,21.9,23.6] : [6.6,8.3,17.8,19.5]; xs.forEach((x,i)=>ci(c,x,21+(i%2)*0.7,0.45,'#d9955a')); }},
+  face_glasses:  {main:(c,d)=>{ const L = d==='down' ? 12 : 10.4, R = d==='down' ? 20 : 16.8; ring(c,L,EYE_Y,3.5,'#3a3a3a',0.9); ring(c,R,EYE_Y,3.5,'#3a3a3a',0.9); line(c,L+3.5,EYE_Y-0.4,R-3.5,EYE_Y-0.4,'#3a3a3a',0.9); line(c,L-3.5,EYE_Y-0.4,L-4.8,EYE_Y-1.4,'#3a3a3a',0.9); line(c,R+3.5,EYE_Y-0.4,R+4.8,EYE_Y-1.4,'#3a3a3a',0.9); }},
+  face_sun:      {main:(c,d)=>{ const L = d==='down' ? 12 : 10.4, R = d==='down' ? 20 : 16.8; elO(c,L,EYE_Y,3.4,2.9,'#222'); elO(c,R,EYE_Y,3.4,2.9,'#222'); line(c,L+3.4,EYE_Y-0.4,R-3.4,EYE_Y-0.4,'#222',1.1); ci(c,L-1,EYE_Y-1,0.9,'rgba(255,255,255,.45)'); ci(c,R-1,EYE_Y-1,0.9,'rgba(255,255,255,.45)'); }},
+  face_sparkle:  {main:(c,d)=>{ star(c,7.3,12,1.6,'#fff'); star(c,25,10.5,1.3,'#ffd84d'); star(c,8.6,23,0.9,'#ffd84d'); star(c,24,22.8,0.8,'#fff'); }},
+  /* 목걸이 (목 y≈24.5~27) */
+  neck_pearl:    {main:c=>[[11,24.6],[12.6,26.1],[14.4,27],[16,27.3],[17.6,27],[19.4,26.1],[21,24.6]].forEach(p=>{ ci(c,p[0],p[1],1,'#fff'); ring(c,p[0],p[1],1,'#c9c9c9',0.35); })},
+  neck_heart:    {main:c=>{ arc(c,16,22.5,5.2,0.2*Math.PI,0.8*Math.PI,'#ffd84d',0.7); heart(c,16,28.2,1.5,'#ff5aa5'); }},
+  neck_scarf:    {main:c=>{ rrO(c,10.2,23.2,11.6,3.2,1.5,'#e03131'); rrO(c,18,25.5,3.2,6,1,'#e03131'); rr(c,18.4,29.5,2.4,1.1,'#ffd84d'); rr(c,10.8,24.2,10.4,0.8,'#ff6b6b'); }},
+  neck_bow:      {main:c=>bowArt(c,16,25.8,0.9,'#e03131')},
+  neck_star:     {main:c=>{ arc(c,16,22.5,5.2,0.2*Math.PI,0.8*Math.PI,'#ffd84d',0.7); starO(c,16,28.3,1.9,'#ffd84d'); }},
+  neck_lei:      {main:c=>[[10,24.4,'#ff5aa5'],[11.8,26.2,'#ffd84d'],[13.9,27.4,'#fff'],[16,27.8,'#ff8c42'],[18.1,27.4,'#ff5aa5'],[20.2,26.2,'#ffd84d'],[22,24.4,'#fff']].forEach(p=>flowerArt(c,p[0],p[1],1,p[2],'#fff3a0'))},
+  /* 팔찌 (손목 y≈32.5) */
+  wrist_pink:    {main:c=>{ rrO(c,6,31.6,4,1.8,0.8,'#ff5aa5'); rrO(c,22,31.6,4,1.8,0.8,'#ff5aa5'); }},
+  wrist_beads:   {main:c=>['#ff5aa5','#ffd84d','#5ac8fa','#4ade80'].forEach((col,i)=>{ ci(c,6.4+i*1.1,32.5,0.6,col); ci(c,22.4+i*1.1,32.5,0.6,col); })},
+  wrist_gold:    {main:c=>{ rrO(c,6,31.7,4,1.6,0.8,'#ffd84d'); rrO(c,22,31.7,4,1.6,0.8,'#ffd84d'); ci(c,8,32.5,0.5,'#fff'); ci(c,24,32.5,0.5,'#fff'); }},
+  wrist_flower:  {main:c=>{ flowerArt(c,8,32.4,1.4,'#ff9ecb'); flowerArt(c,24,32.4,1.4,'#ff9ecb'); }},
+  wrist_watch:   {main:c=>{ rrO(c,6.1,31.2,3.8,2.6,0.8,'#4a7bd9'); ci(c,8,32.5,0.95,'#fff'); line(c,8,32.5,8,31.9,'#333',0.4); line(c,8,32.5,8.4,32.5,'#333',0.4); }},
+  wrist_rainbow: {main:c=>['#ff5a5a','#ffd166','#4ade80','#60a5fa'].forEach((col,i)=>{ rr(c,6,31.3+i*0.6,4,0.55,col); rr(c,22,31.3+i*0.6,4,0.55,col); })},
+  /* 등 (뒤) */
+  back_fairy:    {back:c=>wingsArt(c,'rgba(140,235,255,.8)','rgba(255,255,255,.75)')},
+  back_angel:    {back:c=>{ wingsArt(c,'#fff','#f3f3f3'); el(c,3.2,30,2.4,4.5,'#fff',-0.3); el(c,28.8,30,2.4,4.5,'#fff',0.3); }},
+  back_butterfly:{back:c=>{ elO(c,4.5,25.5,5,5,'#ff8c42'); elO(c,27.5,25.5,5,5,'#ff8c42'); elO(c,5.5,32,3.8,3.8,'#ffd84d'); elO(c,26.5,32,3.8,3.8,'#ffd84d'); ci(c,4.5,25.5,1.8,'#fff'); ci(c,27.5,25.5,1.8,'#fff'); ci(c,5.5,32,1.1,'#ff5aa5'); ci(c,26.5,32,1.1,'#ff5aa5'); }},
+  back_cape:     {back:c=>{ polyO(c,[[8.5,24],[23.5,24],[26.5,39],[5.5,39]],'#e03131'); rr(c,7,36.6,18,1.2,'#ffd84d'); }, over:c=>{ rrO(c,10,23.4,12,2.2,1,'#ffd84d'); }},
+  back_rainbow:  {back:c=>{ ['#ff5a5a','#ffb347','#ffd166','#4ade80','#60a5fa','#c084fc'].forEach((col,i)=>poly(c,[[8.5+i*0.5,24],[23.5-i*0.5,24],[26.5-i*1.1,39],[5.5+i*1.1,39]],col)); polyO(c,[[8.5,24],[23.5,24],[26.5,39],[5.5,39]],'rgba(0,0,0,0)'); }, over:c=>{ rrO(c,10,23.4,12,2.2,1,'#fff'); }},
+  back_bag:      {back:c=>{ rrO(c,7.5,25,17,12,2.5,'#e8554e'); rr(c,8.5,26,15,2.5,'#c0392b'); }, over:c=>{ rrO(c,11,23.6,2.4,10.5,1,'#c0392b'); rrO(c,18.6,23.6,2.4,10.5,1,'#c0392b'); }},
+  /* 손에 든 것 (오른손 (24,34) 기준, 오른쪽을 보면 자동으로 왼손에 들림) */
+  hand_flowers:  {main:c=>{ line(c,24,33,25.6,27.5,'#3a9d3a',1); line(c,24,33,27.2,28,'#3a9d3a',1); line(c,24,33,23.6,27.5,'#3a9d3a',1); polyO(c,[[22,30.5],[26.8,30.5],[24.4,35]],'#ffd6ee'); flowerArt(c,23.3,26.6,1.6,'#ff5aa5'); flowerArt(c,27.6,27,1.6,'#ffd84d','#fff'); flowerArt(c,25.6,24.6,1.5,'#ff8c42'); }},
+  hand_lolly:    {main:c=>{ rr(c,25.6,25.5,1.2,8.5,'#fff'); ciO(c,26.2,23.5,3.3,'#ff5aa5'); arc(c,26.2,23.5,1.8,0,Math.PI*1.4,'#fff',0.9); arc(c,26.2,23.5,0.7,Math.PI*0.5,Math.PI*1.9,'#fff',0.7); }},
+  hand_bear:     {main:c=>{ ciO(c,27,33,3.2,'#b07a45'); ciO(c,27,28.6,2.6,'#b07a45'); ciO(c,25.2,26.8,1.1,'#b07a45'); ciO(c,28.8,26.8,1.1,'#b07a45'); ci(c,27,33.4,1.6,'#d9b38c'); ci(c,26.2,28.3,0.4,'#222'); ci(c,27.8,28.3,0.4,'#222'); ci(c,27,29.4,0.45,'#222'); }},
+  hand_wand:     {main:c=>{ rrO(c,26.4,23,1.5,11,0.7,'#8b5a2b'); starO(c,27.1,21,3,'#ffd84d'); ci(c,30.2,18.5,0.7,'#fff'); ci(c,23.8,19,0.6,'#fff'); ci(c,29.5,24.5,0.5,'#fff'); }},
+  hand_balloon:  {main:c=>{ line(c,24,33,28.5,19,'#999',0.6); elO(c,28.6,13.5,4.3,5,'#ff5a5a'); el(c,27.3,11.8,1.3,2,'rgba(255,255,255,.75)',0.5); tri(c,27.8,18.4,29.4,18.4,28.6,19.6,'#ff5a5a'); }},
+  hand_umbrella: {main:c=>{ rrO(c,26.2,20,2,14,1,'#ff9ecb'); triO(c,25.4,20,28.9,20,27.2,16.5,'#ff9ecb'); rr(c,26.8,34,0.9,2.5,'#8b5a2b'); arc(c,28.3,36.5,1.2,0,Math.PI,'#8b5a2b',0.9); rr(c,26.6,24,1.2,8,'#ffd6ee'); }},
+  hand_flag:     {main:c=>{ rrO(c,26.6,17,1.3,17,0.6,'#8b5a2b'); polyO(c,[[27.9,17.6],[34.5,20.4],[27.9,23.2]],'#ff5aa5'); star(c,30.2,20.4,1.3,'#fff'); }},
+  hand_basket:   {main:c=>{ rrO(c,23,32,7.5,4.6,1.2,'#c99a5b'); arc(c,26.75,32,3.3,Math.PI,2*Math.PI,'#8b5a2b',1); for (let i=0;i<3;i++) rr(c,23.6+i*2.3,33,0.7,2.8,'#a67c45'); ci(c,24.8,31.4,1.1,'#e03131'); ci(c,27.2,31.2,1.1,'#4ade80'); ci(c,29,31.6,0.9,'#ffd84d'); }},
 };
 function artCall(id, phase, c, dir, frame, extra){ const a = id && ITEM_ART[id]; if (a && a[phase]) a[phase](c, dir, frame, extra); }
 function drawHero(c, x, y, dir, frame, s=1, o=state.outfit){
-  c.save(); c.translate(x, y); c.scale(s, s);
-  const lift = frame ? 1 : 0, hc = HAIR_COLORS[o.haircolor] || '#4a2a12', skin = '#ffd9b3', skin2 = '#f6c9a0';
-  el(c, 16, 29, 8, 3, 'rgba(0,0,0,.25)');
-  if (dir !== 'up') artCall(o.back, 'back', c, dir, frame);                        // 날개/망토/가방 (뒤)
-  rr(c, 12, 25-lift, 3, 4+lift, skin2); rr(c, 17, 25, 3, 4, skin2);                  // 다리
-  artCall(o.outfit, 'legs', c, dir, frame, lift);                                     // 바지
-  artCall(o.shoes, 'main', c, dir, frame, lift);                                      // 신발
-  rr(c, 7, 17, 3, 6, skin2); rr(c, 22, 17, 3, 6, skin2);                              // 팔
-  artCall(o.outfit, 'main', c, dir, frame);                                           // 옷
-  if (dir === 'up') artCall(o.back, 'back', c, dir, frame); else artCall(o.back, 'over', c, dir, frame);   // 뒤돌면 등 아이템이 앞에 보임
-  artCall(o.wrist, 'main', c, dir, frame); artCall(o.neck, 'main', c, dir, frame);
-  ci(c, 16, 10, 7, skin);                                                             // 얼굴
-  if (dir !== 'up'){
-    c.fillStyle = '#222';
-    if (dir==='down'){ c.fillRect(13, 11, 2, 2); c.fillRect(18, 11, 2, 2); }
-    if (dir==='left'){ c.fillRect(11, 11, 2, 2); c.fillRect(16, 11, 2, 2); }
-    if (dir==='right'){ c.fillRect(15, 11, 2, 2); c.fillRect(20, 11, 2, 2); }
-    artCall(o.face, 'main', c, dir, frame);
-  }
-  c.fillStyle = hc; c.beginPath(); c.arc(16, 9, 7.5, Math.PI, 0); c.fill(); rr(c, 8.5, 9, 15, 2, hc);   // 머리
-  if (dir==='up') rr(c, 9, 9, 14, 6, hc);
-  artCall(o.hair, 'main', c, dir, frame, hc);
-  artCall(o.hat, 'main', c, dir, frame, hc);
+  c.save(); c.translate(x, y-12); c.scale(s, s); c.lineJoin = 'round'; c.lineCap = 'round';
+  if (dir === 'right'){ c.translate(32, 0); c.scale(-1, 1); dir = 'left'; }
+  const hc = HAIR_COLORS[o.haircolor] || '#4a2a12'; const hx = {hc, hcL:shade(hc,.38), hcD:shade(hc,-.3)};
+  const lf = {l: frame===1 ? 1.5 : 0, r: frame===3 ? 1.5 : 0}; const bob = (frame===1 || frame===3) ? -0.8 : 0;
+  el(c, 16, 42.6, 9, 2.4, 'rgba(0,0,0,.22)');                                          // 그림자
+  c.translate(0, bob);
+  if (dir !== 'up') artCall(o.back, 'back', c, dir, frame);                              // 날개/망토/가방 (뒤)
+  artCall(o.hair, 'back', c, dir, frame, hx);                                            // 뒷머리(양갈래·긴머리 등)
+  rrO(c, 12, 35-lf.l, 3.6, 6.8, 1.3, SKIN); rrO(c, 16.4, 35-lf.r, 3.6, 6.8, 1.3, SKIN);  // 다리
+  rr(c, 12.3, 38.5-lf.l, 3, 2, '#fff'); rr(c, 16.7, 38.5-lf.r, 3, 2, '#fff');           // 양말
+  artCall(o.outfit, 'legs', c, dir, frame, lf);                                          // 바지
+  artCall(o.shoes, 'main', c, dir, frame, lf);                                           // 신발
+  rrO(c, 6.3, 24.5, 3.4, 9, 1.6, SKIN); rrO(c, 22.3, 24.5, 3.4, 9, 1.6, SKIN);           // 팔
+  ciO(c, 8, 34, 1.9, SKIN); ciO(c, 24, 34, 1.9, SKIN);                                   // 손
+  rr(c, 14.3, 21.5, 3.4, 3.5, SKIN_D);                                                   // 목
+  artCall(o.outfit, 'main', c, dir, frame);                                              // 옷
+  if (dir === 'up') artCall(o.back, 'back', c, dir, frame); else artCall(o.back, 'over', c, dir, frame);
+  artCall(o.wrist, 'main', c, dir, frame); if (dir !== 'up') artCall(o.neck, 'main', c, dir, frame);
+  ciO(c, 16, 13.5, 10.5, SKIN);                                                          // 얼굴
+  if (dir !== 'up'){ drawFace(c, dir, o); artCall(o.face, 'main', c, dir, frame); }
+  artCall(o.hair, 'main', c, dir, frame, hx);                                            // 윗머리+앞머리(+장식)
+  artCall(o.hat, 'main', c, dir, frame, hx);
   artCall(o.hand, 'main', c, dir, frame);
   c.restore();
 }
@@ -886,16 +977,17 @@ function drawAirship(c, x, y, t){
   c.save(); c.translate(x, y + Math.sin(t/300)*2);
   el(c, 16, 31, 10, 3, 'rgba(0,0,0,.2)');
   line(c, 9, 18, 11, 24, '#8b5a2b', 1); line(c, 23, 18, 21, 24, '#8b5a2b', 1);
-  rr(c, 10, 24, 12, 6, '#8b5a2b'); el(c, 16, 11, 11, 10, '#ff5a5a'); el(c, 16, 11, 4, 10, '#ffd166');
-  ci(c, 16, 24, 3, '#ffd9b3'); c.fillStyle = HAIR_COLORS[state.outfit.haircolor] || '#4a2a12'; c.beginPath(); c.arc(16, 23, 3.2, Math.PI, 0); c.fill();
+  rrO(c, 10, 24, 12, 6, 1.5, '#8b5a2b'); for (let i=0;i<3;i++) rr(c, 11+i*3.6, 25, 0.7, 4, '#6e4329');
+  elO(c, 16, 11, 11, 10, '#ff5a5a'); el(c, 16, 11, 4, 10, '#ffd166'); el(c, 11, 7, 2.2, 3.5, 'rgba(255,255,255,.55)', -0.5);
+  const hc = HAIR_COLORS[state.outfit.haircolor] || '#4a2a12'; ciO(c, 16, 24, 3, SKIN); c.fillStyle = hc; c.beginPath(); c.arc(16, 23.4, 3.2, Math.PI, 0); c.fill(); o_(c);
   c.restore();
 }
 function drawChest(c, x, y, opened){
-  rr(c, x+8, y+13, 16, 12, opened ? '#a4713d' : '#8b5a2b'); rr(c, x+8, opened ? y+5 : y+10, 16, 5, opened ? '#c99a5b' : '#a4713d');
-  if (!opened){ rr(c, x+15, y+10, 2, 15, '#ffd84d'); rr(c, x+14, y+16, 4, 3, '#ffd84d'); } else { rr(c, x+10, y+15, 12, 4, '#ffd84d'); star(c, x+16, y+12, 3, '#fff'); }
+  rrO(c, x+8, y+13, 16, 12, 1.5, opened ? '#a4713d' : '#8b5a2b'); rrO(c, x+8, opened ? y+5 : y+10, 16, 5, 1.5, opened ? '#c99a5b' : '#a4713d');
+  if (!opened){ rr(c, x+15, y+10, 2, 15, '#ffd84d'); rrO(c, x+14, y+16, 4, 3, 0.8, '#ffd84d'); } else { rr(c, x+10, y+15, 12, 4, '#ffd84d'); star(c, x+16, y+12, 3, '#fff'); }
 }
 function drawPortal(c, x, y, t){
-  for (let i=0;i<3;i++){ const a = t/500 + i*2.09; c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 2; c.beginPath(); c.arc(x+16, y+16, 5+i*3.5, a, a+2.2); c.stroke(); }
+  for (let i=0;i<3;i++){ const a = t/500 + i*2.09; arc(c, x+16, y+16, 5+i*3.5, a, a+2.2, 'rgba(255,255,255,.85)', 2); }
   ci(c, x+16, y+16, 3, '#fff');
 }
 
@@ -1197,7 +1289,7 @@ function missingSyllable(it, bank, key, n){
    ===================================================================== */
 const bt = {el:$('#battle'), m:null, hp:0, q:null, lock:false, wrongs:0, n:3};
 const btHeroCtx = $('#bt-hero-canvas').getContext('2d');
-function drawBattleHero(){ btHeroCtx.clearRect(0,0,96,96); drawHero(btHeroCtx, 0, 0, 'left', 0, 3); }
+function drawBattleHero(){ btHeroCtx.clearRect(0,0,86,122); drawHero(btHeroCtx, 7.8, 36.2, 'left', 0, 2.2); }
 async function startBattle(m){
   ui.open++; bt.m = m; bt.hp = m.q; bt.lock = true; bt.n = state.map==='w2' ? 4 : 3; hero.path = []; clearHeld();
   bt.el.classList.remove('hidden'); bt.el.classList.remove('night','cave');
@@ -1299,7 +1391,7 @@ function equip(it, force){
   recalcHearts(); updateHUD(); save();
 }
 function openCloset(slot){ closetSlot = slot || closetSlot; $('#closet').classList.remove('hidden'); ui.open++; renderCloset(); TTS.say('거울 앞이에요. 마음에 드는 걸 골라 봐!'); }
-function drawClosetHero(){ closetCtx.clearRect(0,0,150,150); drawHero(closetCtx, 19, 36, closetDir, 0, 3.5); }
+function drawClosetHero(){ closetCtx.clearRect(0,0,150,150); drawHero(closetCtx, 33.4, 40.6, closetDir, 0, 2.6); }
 function renderCloset(){
   const owned = ITEMS.filter(it => state.items.includes(it.id)).length;
   $('#closet-count').textContent = `아이템 ${owned}/${ITEMS.length}`;
@@ -1423,7 +1515,7 @@ function update(dt){
     hero.t += dt/MOVE_MS;
     if (hero.t >= 1){ hero.x = hero.to.x; hero.y = hero.to.y; hero.px = hero.x; hero.py = hero.y; hero.moving = false; onArrive(); }
     else { hero.px = hero.from.x + (hero.to.x-hero.from.x)*hero.t; hero.py = hero.from.y + (hero.to.y-hero.from.y)*hero.t; }
-    walkClock += dt; hero.frame = Math.floor(walkClock/120)%2;
+    walkClock += dt; hero.frame = Math.floor(walkClock/110)%4;
   } else { hero.frame = 0; }
   if (!hero.moving && !busy()){
     const any = ['up','down','left','right'].find(k => held[k]);
